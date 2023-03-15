@@ -3,40 +3,39 @@
 
 (cfg/define
   {:db {:nested
-        {:db_name {:description
+        {:name {:description
                    "The name of the database that backs scotus."
                    :type :string
                    ;; Maybe relax this for first time setup
                    :required true
                    :default "kb"}
-         :db_host {:description
+         :host {:description
                    "The host where the database is kept."
                    :type :string
                    :required true
                    :default "localhost"}
-         :db_user {:description
+         :user {:description
                    "The name of the user accessing the database."
                    :type :string
                    :required true
                    :default "postgres"}
-         :db_port {:desccription
+         :port {:desccription
                    "The port to use when accessing the database."
                    :type :number
                    :required true
                    :default 5432}}}})
 
 
-(defn config-init!
+(defn init!
   "Populate scotus's configuration"
   []
   (cfg/populate-from-env))
 
-#_{:clj-kondo/ignore [:redefined-var]}
-(defn get
+(defn get-item
   "Get an item from the configuration."
   [& args]
   (apply cfg/get args))
 
 (comment
-  (config-init!)
+  (init!)
   )
