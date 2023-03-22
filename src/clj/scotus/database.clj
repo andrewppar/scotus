@@ -9,7 +9,9 @@
 ;; TODO: Maybe keep an object index table?
 ;; TODO: Set things up for rules
 
-(defn ^:private clean-object-name
+;; create table
+
+(defn ^:private, clean-object-name
   [item]
   (str/replace item #"[- ]" "_"))
 
@@ -33,7 +35,7 @@
   [table-name & columns]
   (let [table-key     (to-keyword table-name)
         required-cols [[:negative :boolean]
-                       [:justification :jsonb]
+                       [:justification [:varchar 50]]
                        [:context [:varchar 50]]]
         clean-cols   (mapv
                       (fn [col] [(to-keyword col) [:varchar 500]])
@@ -49,10 +51,116 @@
     ;; create indexes
     (mapv (fn [column] (create-index table-name column {})) columns)
     ;; add a unique constraint for id
-    (create-index table-name "id" {:unique true})))
+    (create-index table-name "id" {:unique true}))
+  (state/refresh-index))
 
-(create-table "subclass-of" "subclass" "superclass")
+;;; add rows
+
+(defn ^:prvate add-computed-args
+  [context justification negated? spec]
+  (let [id        (hash (reduce str "" spec))]
+    `[~id ~@spec ~negated? ~justification ~context]))
+
+(defn ^:private add-partition
+  [table columns context justification negated? specs]
+  (let [create-row-fn (partial add-computed-args
+                               context justification negated?)]
+    (jdbc/execute!
+     (state/db-connection)
+     (-> (h/insert-into (to-keyword table) columns)
+         (h/values (map create-row-fn specs))
+         sql/format))))
 
 (defn add-rows
   "Given a vector of row specifications and a table name
-  add those rows to the database.")
+  add those rows to the database."
+  [table context justification negated? row-specs]
+  ;; Use the args for validation
+  (let [args    (map to-keyword (state/get-table-args table))
+        columns `[:id ~@args :negative :justification :context]
+        parts (partition-all 10000 row-specs)]
+    (pmap
+     (partial add-partition table columns context justification negated?)
+     parts)))
+
+;;; delete rows
+(defn delete-rows
+  "Given a vector of row-specifications, a table, and a context,
+  delete the corresponding rows from the table."
+  [table context row-specs]
+  (let [ids (map (fn [spec] (hash (reduce str "" spec))) row-specs)]
+    (jdbc/execute!
+     (state/db-connection)
+     (-> (h/delete-from (to-keyword table))
+         (h/where
+          [:in :id ids]
+          [:= :context context])
+         (sql/format {:inline true})))))
+
+;;; lookup rows
+(defn ^:private row-spec->conjunction
+  [contexts columns row-spec]
+  (when-not (>= (count columns) (count row-spec))
+    (throw
+     (ex-info
+      (format "Row specification \"%s\" cannot be used with columns: %s"
+              row-spec columns)
+      {:caused-by `(>= (count ,columns) (count ,row-spec))})))
+  (->> row-spec
+       (zipmap columns)
+       (reduce-kv
+        (fn [result col value]
+          (if (nil? value)
+            result
+            (conj result [:= col value])))
+        [:and [:in :context contexts]])))
+
+(defn ^:private row-specs->where-body
+  [contexts columns row-specs]
+  (reduce
+   (fn [acc row-spec]
+     (conj acc (row-spec->conjunction contexts columns row-spec)))
+   [:or]
+   row-specs))
+
+(defn lookup-rows-serial
+  [table contexts row-specs]
+  (let [table-columns (map to-keyword (state/get-table-args table))]
+    (jdbc/execute!
+     (state/db-connection)
+     (-> (apply h/select  table-columns)
+         (h/from (to-keyword table))
+         (h/where
+          (row-specs->where-body contexts table-columns row-specs))
+         sql/format))))
+
+(defn lookup-rows
+  [table contexts row-specs]
+  (let [partitions (partition-all 10000 row-specs)]
+    (pmap (partial lookup-rows-serial table contexts) partitions)))
+
+
+(comment
+  :testing
+
+  (create-table "subclass_of" "subclass" "superclass")
+  (add-rows "subclass_of"
+            "nature" "anparisi" false [["cat" "mammal"] ["dog" "mammal"]])
+  (add-rows "subclass_of"
+               "nature" "anparisi" false [["chihuahua" "dog"]
+                                          ["persian" "cat"]
+                                          ["golden retriever" "dog"]
+                                          ])
+  (add-rows "subclass_of"
+            "household" "anparisi" false [["cat" "pet"] ["dog" "pet"]])
+
+  (add-rows "subclass_of"
+            "nature" "anparisi" false [["cat" "feline"] ["cat" "chordate"]])
+  ;; This doesn't work
+  (delete-rows "subclass_of"
+               "nature" [["cat" "mammal"] ["dog" "mammal"]])
+
+  (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
+  (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
+
+  )
