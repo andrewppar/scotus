@@ -163,4 +163,6 @@
   (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
   (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
 
+  (create-table "instance" "thing" "class")
+
   )

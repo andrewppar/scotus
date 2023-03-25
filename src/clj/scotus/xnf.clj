@@ -57,7 +57,7 @@
     (->> formula
          form/juncts
          (map negation-in)
-         (form/junction operator))))
+         (form/junction (form/dual operator)))))
 
 (defmethod negation-in :implies
   [formula]

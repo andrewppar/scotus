@@ -8,16 +8,16 @@
   org.clojure/clojure {:mvn/version "1.11.1"}
   org.postgresql/postgresql {:mvn/version "42.1.4"}}
  :aliases
- {:dev/repl
-           {:extra-deps
-            {nrepl/nrepl       {:mvn/version "0.9.0"}
-             cider/cider-nrepl {:mvn/version "0.28.5"}}
-            :main-opts ["-m"
-                        "nrepl.cmdline"
-                        "--middleware"
-                        "[cider.nrepl/cider-middleware]"
-                        "-i"]
-            }
-
- }
-}
+ {:dev/repl {:extra-deps
+             {nrepl/nrepl       {:mvn/version "0.9.0"}
+              cider/cider-nrepl {:mvn/version "0.28.5"}}
+             :main-opts ["-m"
+                         "nrepl.cmdline"
+                         "--middleware"
+                         "[cider.nrepl/cider-middleware]"
+                         "-i"]}
+  :dev/test {:extra-deps {lambdaisland/kaocha {:mvn/version "1.80.1274"}}
+             :exec-fn kaocha.runner/exec-fn
+             :jvm-opts ["-XX:-OmitStackTraceInFastThrow"]
+             :exec-args {}
+             :extra-paths ["test/clj"]}}}

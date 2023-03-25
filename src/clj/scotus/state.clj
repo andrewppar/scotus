@@ -85,7 +85,8 @@
   (let [new-state (ig/init config [:index/predicate])]
     (clojure.core/reset! state new-state)))
 
+(defn predicate-index  []
+  (get @state :index/predicate))
+
 (comment
   (init!))
-
-@state

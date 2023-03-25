@@ -1,188 +1,7 @@
 (ns scotus.formula
-  (:require [scotus.state :as state]))
-
-(defn predicate?
-  "A string that represents a predicate of the system."
-  [object]
-  (and
-   (string? object)
-   (-> @state/state
-       (get :index/predicate)
-       keys
-       (.contains object))))
-
-(defn main-operator
-  [formula]
-  (first formula))
-
-(defn ^:private maybe-accessor-error
-  [object test-fn object-type accessor-type]
-  (when-not (test-fn object)
-    (throw
-     (ex-info (format "%s is not %s" object object-type)
-              {:caused-by
-               "Only %s has %s." object-type accessor-type}))))
-
-
-;; Atomics
-
-(defn atomic?
-  "A formula with no logical complexity.
-
-  NOTE: This namespace is purely syntactic so there is no check here
-  that the predicate is followed by a right number of arguments."
-  [object]
-  (and
-   (coll? object)
-   (predicate? (main-operator object))))
-
-(defn atomic
-  "Create an atomic formula"
-  [predicate & args]
-  `[predicate ~@args])
-
-(defn predicate
-  "Gets the predicate of an atomic formula. If the formula is not
-  atomic it throws an error."
-  [formula]
-  (maybe-accessor-error formula atomic? "atomic formula" "predicate")
-  (main-operator formula))
-
-(defn args
-  "Get the args of an atomic formula. If the formula is not
-  atomic it throws an error."
-  [formula]
-  (maybe-accessor-error formula atomic? "atomic formula" "args")
-  (rest formula))
-
-(declare formula?)
-
-;; Negation
-
-(defn negation?
-  "A formula whose main operator is `:not`"
-  [object]
-  (and
-   (= (main-operator object) :not)
-   (formula? (second object))))
-
-(defn lnot
-  "Create a negation from a formula."
-  [formula]
-  [:not formula])
-
-(defn negatum
-  "The negated formula of a negation."
-  [formula]
-  (maybe-accessor-error formula negation? "negation" "negatum")
-  (second formula))
-
-;; Conjunction
-
-(defn conjunction?
-  "A formula whose main operator is `:and`"
-  [object]
-  (and
-   (= (main-operator object) :and)
-   (every? formula? (rest object))))
-
-
-(defn land
-  "Create a conjunction from conjuncts."
-  [& conjuncts]
-  `[:and ~@conjuncts])
-
-(defn conjuncts
-  "The conjuncts of a conjunction"
-  [formula]
-  (maybe-accessor-error formula conjunction? "conjunction" "conjuncts")
-  (rest formula))
-
-;; Disjunction
-
-(defn disjunction?
-  "A formula whose main operator is `:or`"
-  [object]
-  (and
-   (= (main-operator object) :or)
-   (every? formula? (rest object))))
-
-
-(defn lor
-  "Create a conjunction from disjuncts."
-  [& disjuncts]
-  `[:or ~@disjuncts])
-
-(defn disjuncts
-  "The conjuncts of a conjunction"
-  [formula]
-  (maybe-accessor-error formula disjunction? "disjunction" "disjuncts")
-  (rest formula))
-
-;; Junction
-(defn junction?
-  "Check if a formula is a junction"
-  [formula]
-  (or
-   (conjunction? formula)
-   (disjunction? formula)))
-
-(defn junction
-  [kind & juncts]
-  (case kind
-    :and (apply land juncts)
-    :or  (apply lor juncts)))
-
-(defn juncts
-  [formula]
-  (maybe-accessor-error formula junction? "junction" "juncts")
-  (rest formula))
-
-
-;; Implication
-
-;; TODO: Should we not allow rules to conclude to disjunctions?
-(defn rule?
-  "Check if an object is a rule."
-  [object]
-  (and
-   (= (main-operator object) :implies)
-   (= (count object) 3)
-   (formula? (nth object 1))
-   (formula? (nth object 2))))
-
-(defn lif
-  "Create a rule."
-  [antecedent consequent]
-  [:implies antecedent consequent])
-
-(defn antecedent
-  "Get the antecedent of a rule"
-  [rule]
-  (maybe-accessor-error rule rule? "rule" "antecedent")
-  (nth rule 1))
-
-(defn consequent
-  "Get the consequent of a rule"
-  [rule]
-  (maybe-accessor-error rule rule? "rule" "consequent")
-  (nth rule 2))
-
-(defn formula?
-  [object]
-  (or
-   (atomic? object)
-   (negation? object)
-   (conjunction? object)
-   (disjunction? object)
-   (rule? object)))
-
-(defn kind
-  [formula]
-  (let [operator (main-operator formula)]
-      (if (predicate? operator)
-        :atomic
-        operator)))
+  (:require
+   [clojure.string :as string]
+   [scotus.state :as state]))
 
 (def hierarchy (atom (make-hierarchy)))
 
@@ -192,3 +11,153 @@
 (swap! hierarchy derive :or       :formula)
 (swap! hierarchy derive :junction :formula)
 (swap! hierarchy derive :implies  :formula)
+
+(defn main-operator
+  [formula]
+  (first formula))
+
+(defn operator-type
+  [operator]
+  (if (string? operator) :atomic operator))
+
+(defn kind
+  [formula]
+  (operator-type (main-operator formula)))
+
+(defn dual
+  "Get the dual formula kind of `kind`"
+  [kind]
+  (case kind
+    :atomic nil
+    :not    :not
+    :and    :or
+    :or     :and
+    :implies nil))
+
+(defn ^:private maybe-accessor-error
+  [object test-fn object-type accessor-type formula-kind]
+  (when (or (not (= (kind object) formula-kind))
+            (not (test-fn object)))
+    (throw
+     (ex-info (format "%s is not %s" object object-type)
+              {:caused-by
+               (format "Only %s has %s." object-type accessor-type)}))))
+
+(defmacro defaccessor [accessor-name args formula-kind & body]
+  (let [formula-arg          (first args)
+        object-name          (-> formula-arg
+                                 name
+                                 (string/replace "-" " "))
+        accessor-name-string (-> accessor-name
+                                 name
+                                 (string/replace "-" " "))]
+    `(defn ~accessor-name
+       ~args
+       (maybe-accessor-error
+        ~formula-arg formula? ~object-name ~accessor-name-string ~formula-kind)
+       (do
+         ~@body))))
+
+(defmulti make
+  {:arglists '([operator & args]
+               [operator predicate & args]
+               [operator formula]
+               [operator antecedent consequent])}
+  (fn [operator & _]
+    (operator-type operator))
+  :hierarchy hierarchy)
+
+(defmulti formula?
+  {:arglists '([formula])}
+  (fn [formula]
+    (kind formula))
+  :hierarchy hierarchy)
+
+(defmacro def-formula-predicate [pred-name formula-kind]
+  `(defn ~pred-name [formula#]
+     (and (= (kind formula#) ~formula-kind)
+          (formula? formula#))))
+
+;;; atoms
+
+(defmethod make :atomic
+  [_ predicate & args]
+  `[~predicate ~@args])
+
+(defn predicate?
+  "A string that represents a predicate of the system."
+  [object]
+  (and
+   (string? object)
+   (.contains (keys (state/predicate-index)) object)))
+
+(defmethod formula? :atomic
+  [formula]
+  (and
+   (predicate? (main-operator formula))
+   (every? string? (rest formula))))
+
+(defaccessor args [atomic-formula] :atomic
+  (rest atomic-formula))
+
+(defaccessor predicate [atomic-formula] :atomic
+  (main-operator atomic-formula))
+
+(def-formula-predicate atomic? :atomic)
+
+;; negation
+
+(defmethod make :not
+  [_ formula]
+  [:not formula])
+
+(defmethod formula? :not
+  [formula]
+  (formula? (second formula)))
+
+(defaccessor negatum [negation] :not
+  (second negation))
+
+(def-formula-predicate negation? :not)
+
+;; junction
+
+(defmethod make :junction
+  [operator & formulas]
+  `[~operator ~@formulas])
+
+(defmethod formula? :and
+  [formula]
+  (and
+   (= (kind formula) :and)
+   (every? formula? (rest formula))))
+
+(defmethod formula? :junction
+  [formula]
+  (every? formula (rest formula)))
+
+(defaccessor juncts [junction] :junction
+  (rest junction))
+
+(def-formula-predicate conjunction? :and)
+(def-formula-predicate disjunction? :or)
+
+;; conditional
+
+(defmethod make :if
+  [_ antecedent consequent]
+  [:implies antecedent consequent])
+
+(defmethod formula? :if
+  [formula]
+  (and
+   (formula? (nth formula 1))
+   (formula? (nth formula 2))))
+
+(defaccessor antecedent [conditional] :if
+  (nth conditional 1))
+
+(defaccessor consequent [conditional] :if
+  (nth conditional 2))
+
+(def-formula-predicate rule? :if)
