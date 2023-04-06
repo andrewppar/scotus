@@ -5,7 +5,7 @@
 (defmulti implication-out
   {:arglists '([formula])}
   (fn [formula]
-    (form/kind formula))
+    (form/formula-type formula))
   :hierarchy form/hierarchy)
 
 (defmethod implication-out :atomic
@@ -14,31 +14,27 @@
 
 (defmethod implication-out :not
   [formula]
-  (->> formula
-      form/negatum
-      implication-out
-      form/make :not))
+  (form/not (->> formula form/negatum implication-out)))
 
 (defmethod implication-out :junction
   [formula]
-  (let [operator (form/main-operator formula)]
-    (->> formula
-         form/juncts
-         (map implication-out)
-         (apply form/make operator))))
+  (->> formula
+       form/juncts
+       (map implication-out)
+       (form/junction (form/main-operator formula))))
 
-(defmethod implication-out :if
+(defmethod implication-out :implies
   [formula]
   (let [ant (implication-out (form/antecedent formula))
         con (implication-out (form/consequent formula))]
-    (form/make :or (form/make :not ant) con)))
+    (form/or (form/not ant) con)))
 
 ;; Negation In
 
 (defmulti negation-in
   {:arglists '([formula])}
   (fn [formula]
-    (form/kind formula))
+    (form/formula-type formula))
   :hierarchy form/hierarchy)
 
 (defmethod negation-in :atomic
@@ -54,17 +50,16 @@
 
 (defmethod negation-in :junction
   [formula]
-  (let [operator (form/main-operator formula)]
-    (->> formula
-         form/juncts
-         (map negation-in)
-         (form/make (form/dual operator)))))
+  (->> formula
+       form/juncts
+       (map negation-in)
+       (form/junction (form/main-operator formula))))
 
 (defmethod negation-in :if
   [formula]
   (let [ant (form/antecedent formula)
         con (form/consequent formula)]
-    (form/make :and ant (form/make :not con))))
+    (form/and ant (form/not con))))
 
 (defn add-each-to-each
   [blocks to-add]
@@ -77,7 +72,7 @@
 (defmulti junction-in
   {:arglists '([transform-type formula])}
   (fn [transform-type formula]
-    [transform-type (form/kind formula)])
+    [transform-type (form/formula-type formula)])
   :hierarchy form/hierarchy)
 
 (defmethod junction-in [:junction :atomic]
@@ -89,20 +84,19 @@
   (->> formula
        form/negatum
        (junction-in transform-type)
-       (form/make :not)))
+       form/not))
 
 (defn junction-in-same-polarity
   [transform-type formula]
-  (let [formula-type (form/kind formula)
+  (let [formula-type (form/formula-type formula)
         subformulas  (map (fn [subformula]
-                           (junction-in transform-type subformula))
-                         (form/juncts formula))
+                            (junction-in transform-type subformula))
+                          (form/juncts formula))
         dual-test-fn (case formula-type
                        :or  form/conjunction?
                        :and form/disjunction?)
         [same-juncts dual-juncts] (reduce
                                    (fn [[same dual] formula]
-                                     ;; generalize
                                      (if (dual-test-fn formula)
                                        [same (conj dual formula)]
                                        [(conj same formula) dual]))
@@ -113,10 +107,9 @@
            (map form/juncts)
            (reduce add-each-to-each [same-juncts])
            (map
-            (fn [dual-junct]
-              (apply form/make formula-type dual-junct)))
-           (apply form/make (form/dual formula-type)))
-      (apply form/make formula-type same-juncts))))
+            (fn [dual-junct] (form/junction formula-type dual-junct)))
+           (form/junction (form/dual formula-type)))
+      (form/junction formula-type same-juncts))))
 
 (defmethod junction-in [:and :and]
   [transform-type formula]
@@ -128,13 +121,11 @@
 
 (defn junction-in-dual-polarity
   [transform-type formula]
-  (let [formula-type (form/kind formula)]
-    (->> formula
-         form/juncts
-         (map
-          (fn [subformula]
-            (junction-in transform-type subformula)))
-         (apply form/make formula-type))))
+  (->> formula
+       form/juncts
+       (map
+        (fn [subformula] (junction-in transform-type subformula)))
+       (form/junction (form/formula-type formula))))
 
 (defmethod junction-in [:and :or]
   [transform-type formula]
@@ -144,13 +135,13 @@
   [transform-type formula]
   (junction-in-dual-polarity transform-type formula))
 
-(defmethod junction-in [:junction :if]
+(defmethod junction-in [:junction :implies]
   [transform-type formula]
   (let [ant (form/antecedent formula)
         con (form/consequent formula)]
-    (form/make :if
-               (junction-in transform-type ant)
-               (junction-in transform-type con))))
+    (form/implies
+     (junction-in transform-type ant)
+     (junction-in transform-type con))))
 
 (defn conjunction-in
   [formula]
@@ -163,7 +154,7 @@
 (defmulti collapse-juncts
   {:arglists '([formula])}
   (fn [formula]
-    (form/kind formula))
+    (form/formula-type formula))
   :hierarchy form/hierarchy)
 
 (defmethod collapse-juncts :atomic
@@ -172,10 +163,7 @@
 
 (defmethod collapse-juncts :not
   [formula]
-  (->> formula
-      form/negatum
-      collapse-juncts
-      (form/make :not)))
+  (->> formula form/negatum collapse-juncts form/not))
 
 (defn collapse-juncts-for-junction
   [formula junction-type test-fn]
@@ -187,17 +175,17 @@
         collapse-juncts (get groups true)
         new-juncts      (concat (map form/juncts collapse-juncts)
                                 (get groups false))]
-    (apply form/make junction-type new-juncts)))
+    (form/junction junction-type new-juncts)))
 
 (defmethod collapse-juncts :junction
   [formula]
-  (let [formula-type (form/kind formula)
+  (let [formula-type (form/formula-type formula)
         test-fn      (case formula-type
                        :and form/conjunction?
                        :or  form/disjunction?)]
     (collapse-juncts-for-junction formula formula-type test-fn)))
 
-(defmethod collapse-juncts :if
+(defmethod collapse-juncts :implies
   [formula]
-  (form/make :if (collapse-juncts (form/antecedent formula))
-             (collapse-juncts (form/consequent formula))))
+  (form/implies (collapse-juncts (form/antecedent formula))
+                (collapse-juncts (form/consequent formula))))

@@ -9,16 +9,13 @@
   (is (not (f/predicate? "instance"))))
 
 (deftest-simple-index formula?-test
-  (let [p (f/make "subclass_of" "cat" "mammal")
-        q (f/make "subclass_of" "dog" "mammal")
-        r (f/make "subclass_of" "rat" "mammal")
-        t (f/make "subclass_of" "frog" "amphibian")
-        b (f/make "instance" "penelope" "dog")]
-    (is (f/formula? (f/make :if t
-                            (f/make :and
-                                    p
-                                    (f/make :or
-                                            (f/make :not q)
-                                            r)))))
-    (is (not (f/formula? (f/make :if p b))))
+  (let [p ["subclass_of" "cat" "mammal"]
+        q ["subclass_of" "dog" "mammal"]
+        r ["subclass_of" "rat" "mammal"]
+        t ["subclass_of" "frog" "amphibian"]
+        b ["instance" "penelope" "dog"]]
+    (is (f/formula? (f/implies
+                     t (f/and
+                        p (f/or (f/not q) r)))))
+    (is (not (f/formula? (f/implies p b))))
     (is (not (f/formula? b)))))

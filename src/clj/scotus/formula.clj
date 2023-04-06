@@ -1,6 +1,7 @@
 (ns scotus.formula
   (:require
    [clojure.string :as string]
+   [clojure.string :as str]
    [scotus.state :as state]))
 
 (def hierarchy (atom (make-hierarchy)))
@@ -21,26 +22,25 @@
   [operator]
   (if (string? operator) :atomic operator))
 
-(defn kind
+(defn formula-type
   [formula]
   (operator-type (main-operator formula)))
 
 (defn dual
   "Get the dual formula kind of `kind`"
-  [kind]
-  (case kind
+  [type]
+  (case type
     :atomic nil
     :not    :not
     :and    :or
     :or     :and
     :implies nil))
 
-
 (defn ^:private maybe-accessor-error
   [object test-fn object-type accessor-type formula-kind]
   (when (or (not
              (isa?
-              @hierarchy (kind object) formula-kind))
+              @hierarchy (formula-type object) formula-kind))
             (not (test-fn object)))
     (throw
      (ex-info (format "%s is not %s" object object-type)
@@ -62,30 +62,31 @@
        (do
          ~@body))))
 
-(defmulti make
-  {:arglists '([operator & args]
-               [operator formula]
-               [operator antecedent consequent])}
-  (fn [operator & _]
-    (operator-type operator))
-  :hierarchy hierarchy)
-
 (defmulti formula?
   {:arglists '([formula])}
   (fn [formula]
-    (kind formula))
+    (formula-type formula))
   :hierarchy hierarchy)
 
 (defmacro def-formula-predicate [pred-name formula-kind]
   `(defn ~pred-name [formula#]
-     (and (= (kind formula#) ~formula-kind)
+     (and (= (formula-type formula#) ~formula-kind)
           (formula? formula#))))
 
-;;; atoms
+(defmacro make-predicate [predicate args]
+  (let [pred-symbol (symbol (str/replace predicate "_" "-"))
+        arg-symbols (mapv symbol args)]
+    `(defn ~pred-symbol ~arg-symbols
+       [~predicate ~@arg-symbols])))
 
-(defmethod make :atomic
-  [predicate & args]
-  `[~predicate ~@args])
+(comment "This is cool, but not useful unless we can map it over
+          the predicate index (see commented form in scotus.core"
+         (make-predicate "father_of" ["father" "child"])
+
+         (father-of "Andrew" "Anthony")
+         (father-of "Andrew" "George"))
+
+;;; atoms
 
 (defn predicate?
   "A string that represents a predicate of the system."
@@ -110,9 +111,8 @@
 
 ;; negation
 
-(defmethod make :not
-  [_ formula]
-  [:not formula])
+(defn not [negatum]
+  (conj [:not] negatum))
 
 (defmethod formula? :not
   [formula]
@@ -125,10 +125,6 @@
 
 ;; junction
 
-(defmethod make :junction
-  [operator & formulas]
-  `[~operator ~@formulas])
-
 (defmethod formula? :junction
   [formula]
   (every? formula? (rest formula)))
@@ -136,26 +132,36 @@
 (defaccessor juncts [junction] :junction
   (rest junction))
 
+(defn and [& formulas]
+  `[:and ~@formulas])
+
+(defn or [& formulas]
+  `[:or ~@formulas])
+
+(defn junction [junction-type formulas]
+  (case junction-type
+    :and (apply and formulas)
+    :or  (apply or formulas)))
+
 (def-formula-predicate conjunction? :and)
 (def-formula-predicate disjunction? :or)
 
 
 ;; conditional
 
-(defmethod make :if
-  [_ antecedent consequent]
-  [:if antecedent consequent])
-
-(defmethod formula? :if
+(defmethod formula? :implies
   [formula]
-  (and
+  (clojure.core/and
    (formula? (nth formula 1))
    (formula? (nth formula 2))))
 
-(defaccessor antecedent [conditional] :if
+(defaccessor antecedent [conditional] :implies
   (nth conditional 1))
 
-(defaccessor consequent [conditional] :if
+(defaccessor consequent [conditional] :implies
   (nth conditional 2))
 
-(def-formula-predicate rule? :if)
+(defn implies [antecedent consequent]
+  [:implies antecedent consequent])
+
+(def-formula-predicate rule? :implies)
