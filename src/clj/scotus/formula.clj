@@ -6,11 +6,12 @@
 (def hierarchy (atom (make-hierarchy)))
 
 (swap! hierarchy derive :atomic   :formula)
-(swap! hierarchy derive :not      :junction)
+(swap! hierarchy derive :not      :formula)
 (swap! hierarchy derive :and      :junction)
-(swap! hierarchy derive :or       :formula)
+(swap! hierarchy derive :or       :junction)
 (swap! hierarchy derive :junction :formula)
 (swap! hierarchy derive :implies  :formula)
+
 
 (defn main-operator
   [formula]
@@ -34,9 +35,12 @@
     :or     :and
     :implies nil))
 
+
 (defn ^:private maybe-accessor-error
   [object test-fn object-type accessor-type formula-kind]
-  (when (or (not (= (kind object) formula-kind))
+  (when (or (not
+             (isa?
+              @hierarchy (kind object) formula-kind))
             (not (test-fn object)))
     (throw
      (ex-info (format "%s is not %s" object object-type)
@@ -60,7 +64,6 @@
 
 (defmulti make
   {:arglists '([operator & args]
-               [operator predicate & args]
                [operator formula]
                [operator antecedent consequent])}
   (fn [operator & _]
@@ -81,7 +84,7 @@
 ;;; atoms
 
 (defmethod make :atomic
-  [_ predicate & args]
+  [predicate & args]
   `[~predicate ~@args])
 
 (defn predicate?
@@ -126,15 +129,9 @@
   [operator & formulas]
   `[~operator ~@formulas])
 
-(defmethod formula? :and
-  [formula]
-  (and
-   (= (kind formula) :and)
-   (every? formula? (rest formula))))
-
 (defmethod formula? :junction
   [formula]
-  (every? formula (rest formula)))
+  (every? formula? (rest formula)))
 
 (defaccessor juncts [junction] :junction
   (rest junction))
@@ -142,11 +139,12 @@
 (def-formula-predicate conjunction? :and)
 (def-formula-predicate disjunction? :or)
 
+
 ;; conditional
 
 (defmethod make :if
   [_ antecedent consequent]
-  [:implies antecedent consequent])
+  [:if antecedent consequent])
 
 (defmethod formula? :if
   [formula]

@@ -10,7 +10,7 @@
  :aliases
  {:dev/repl {:extra-deps
              {nrepl/nrepl       {:mvn/version "0.9.0"}
-              cider/cider-nrepl {:mvn/version "0.28.5"}}
+              cider/cider-nrepl {:mvn/version "0.30.0"}}
              :main-opts ["-m"
                          "nrepl.cmdline"
                          "--middleware"

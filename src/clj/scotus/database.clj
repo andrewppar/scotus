@@ -156,7 +156,7 @@
 
   (add-rows "subclass_of"
             "nature" "anparisi" false [["cat" "feline"] ["cat" "chordate"]])
-  ;; This doesn't work
+
   (delete-rows "subclass_of"
                "nature" [["cat" "mammal"] ["dog" "mammal"]])
 
