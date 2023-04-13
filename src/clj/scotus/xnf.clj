@@ -217,9 +217,29 @@
   (form/implies (collapse-juncts (form/antecedent formula))
                 (collapse-juncts (form/consequent formula))))
 
+(defn remove-trivialities [xnf]
+  (let [formula-type (form/formula-type xnf)]
+    (form/junction formula-type
+                (reduce
+                 (fn [new-juncts junct]
+                   (if (form/simple-triviality? junct)
+                     new-juncts
+                     (conj new-juncts junct)))
+                 []
+                 (form/juncts xnf)))))
+
 (defn cnf [formula]
   (-> formula
       implication-out
       negation-in
       disjunction-in
-      collapse-juncts))
+      collapse-juncts
+      remove-trivialities))
+
+(defn dnf [formula]
+  (-> formula
+      implication-out
+      negation-in
+      conjunction-in
+      collapse-juncts
+      remove-trivialities))

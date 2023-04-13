@@ -166,3 +166,15 @@
   [:implies antecedent consequent])
 
 (def-formula-predicate rule? :implies)
+
+;; Simple Semantic Features
+
+(defn simple-triviality? [junction]
+  (let [juncts (set (juncts junction))]
+    (->> juncts
+         (some
+          (fn [junct]
+            (if (negation? junct)
+              (contains? juncts (negatum junct))
+              (contains? juncts (not junct)))))
+         boolean)))
