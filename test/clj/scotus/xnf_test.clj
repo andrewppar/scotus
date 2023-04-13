@@ -17,7 +17,20 @@
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]
         r ["subclass_of" "human" "mammal"]]
-    (is (= (xnf/negation-in (f/not (f/not p))) p))))
+    (is (= p (xnf/negation-in (f/not (f/not p)))))
+    (is (= (f/not p)
+           (xnf/negation-in (f/not (f/not (f/not p))))))
+    (is (= (f/or (f/not p) (f/not q))
+           (xnf/negation-in (f/not (f/and p q)))))
+    (is (= (f/or (f/not p) (f/not q))
+           (xnf/negation-in
+            (f/or (f/not p) (f/not q)))))
+    (is (= (f/and (f/not p) q)
+           (xnf/negation-in (f/not (f/or p (f/not q))))))
+    (is (= (f/implies p q)
+           (xnf/negation-in (f/implies p (f/not (f/not q))))))
+    (is (= (f/and p q)
+           (xnf/negation-in (f/not (f/implies p (f/not q))))))))
 
 (deftest add-each-to-each-test
   (are [blocks to-add result]
@@ -45,51 +58,40 @@
         q ["subclass_of" "dog" "mammal"]
         r ["subclass_of" "human" "mammal"]]
     (are [formula expectation]
-        (= expectation (xnf/conjunction-in formula))
+         (= expectation (xnf/conjunction-in formula))
       ;; simple case
-        (f/and (f/or p q) r)
-        (f/or (f/and p r) (f/and q r))
+      (f/and (f/or p q) r)
+      (f/or (f/and p r) (f/and q r))
 
         ;; noop cases
-        (f/and p)     (f/and p)
-        (f/and p q)   (f/and p q)
-        (f/or p q)    (f/or p q)
+      (f/and p)     (f/and p)
+      (f/and p q)   (f/and p q)
+      (f/or p q)    (f/or p q)
 
         ;; embedded cases
-        (f/or (f/and p (f/or q r)) p)
-        (f/or (f/or (f/and p q) (f/and p r)) p))))
+      (f/or (f/and p (f/or q r)) p)
+      (f/or (f/or (f/and p q) (f/and p r)) p))))
 
-;;(f/fmake :and
-;;  (f/fmake "sublcass_of" "cat" "mammal")
-;;  (f/fmake "subclass_of" "dog" "mammal"))
-;;
-;;
-;;(f/fmake "sublcass_of" "cat" "mammal")
+(deftest-simple-index cnf-test
+  (let [p ["subclass_of" "cat" "mammal"]
+        q ["subclass_of" "dog" "mammal"]
+        r ["subclass_of" "human" "mammal"]]
+    (are [formula expectation]
+        (= expectation (xnf/cnf formula))
 
-;;(deftest-simple-index cnf-test
-;;  (let [p ["subclass_of" "cat" "mammal"]
-;;        q ["subclass_of" "dog" "mammal"]
-;;        r ["subclass_of" "human" "mammal"]]
-;;  (are [formula expectation]
-;;     (= expectation (xnf/cnf formula))
-;;    (f/not (f/and (f/implies p q) (f/not r)))
-;;    (f/and (f/or (f/not p) r) (f/or q r)))))
+      (f/not (f/and (f/implies p q) (f/not r)))
+      (f/and (f/or p r) (f/or (f/not q) r))
 
+      (f/implies (f/implies p q) (f/and (f/not r) q))
+      (f/and
+       (f/or (f/not r) p)
+       (f/or (f/not r) (f/not q))
+       (f/or p q)
+       ;; TODO: Remove tautologies
+       ;;  (f/or (f/not q) q)
+       )
 
-;;    ¬((¬p→¬q)∧¬r)  (¬p∨r)∧(q∨r)
-;;    (p→q)→(¬r∧q)
-;;    (p∨¬r)∧(p∨q)∧(¬q∨¬r)
-;;
-;;    (p -> (q /\ r))
-;;    (~ p \/ q) /\ (~ p \/ r)
-;;
-;;
-;;    A → (  ∧  )
-
-;;(def p (f/make "subclass_of" "cat" "mammal"))
-;;(def q (f/make "subclass_of" "dog" "mammal"))
-;;
-;;
-;;(f/make :or (f/make :not p) q)
-;;
-;;  (xnf/implication-out (f/make :if p q))
+      (f/implies p (f/and q r))
+      (f/and
+       (f/or (f/not p) q)
+       (f/or (f/not p) r)))))

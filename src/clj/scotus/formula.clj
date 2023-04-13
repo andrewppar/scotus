@@ -70,7 +70,8 @@
 
 (defmacro def-formula-predicate [pred-name formula-kind]
   `(defn ~pred-name [formula#]
-     (and (= (formula-type formula#) ~formula-kind)
+     (and (isa? @hierarchy (formula-type formula#) ~formula-kind)
+      #_(= (formula-type formula#) ~formula-kind)
           (formula? formula#))))
 
 (defmacro make-predicate [predicate args]
@@ -143,9 +144,9 @@
     :and (apply and formulas)
     :or  (apply or formulas)))
 
+(def-formula-predicate junction? :junction)
 (def-formula-predicate conjunction? :and)
 (def-formula-predicate disjunction? :or)
-
 
 ;; conditional
 

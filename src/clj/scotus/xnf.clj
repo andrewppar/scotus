@@ -31,11 +31,35 @@
 
 ;; Negation In
 
+(defmulti negation-in-internal
+  {:arglists '([formula])}
+  (fn [formula]
+    (form/formula-type formula))
+  :hierarchy form/hierarchy)
+
 (defmulti negation-in
   {:arglists '([formula])}
   (fn [formula]
     (form/formula-type formula))
   :hierarchy form/hierarchy)
+
+(defmethod negation-in-internal :atomic
+  [formula]
+  (form/not formula))
+
+(defmethod negation-in-internal :junction
+  [formula]
+  (->> formula
+       form/juncts
+       (map form/not)
+       (map negation-in)
+       (form/junction (form/dual (form/formula-type formula)))))
+
+(defmethod negation-in-internal :implies
+  [formula]
+  (let [ant (negation-in (form/antecedent formula))
+        con (negation-in (form/not (form/consequent formula)))]
+    (form/and ant con)))
 
 (defmethod negation-in :atomic
   [formula]
@@ -43,23 +67,26 @@
 
 (defmethod negation-in :not
   [formula]
-  (let [neg (form/negatum formula)]
-    (if (form/negation? neg)
-      (negation-in (form/negatum neg))
-      (negation-in neg))))
+  (let [negatum (form/negatum formula)]
+    (if (form/negation? negatum)
+      (negation-in (form/negatum negatum))
+      (negation-in-internal negatum))))
 
 (defmethod negation-in :junction
   [formula]
-  (->> formula
-       form/juncts
-       (map negation-in)
-       (form/junction (form/main-operator formula))))
+  (let [junction-type (form/formula-type formula)]
+    (->> formula
+         form/juncts
+         (map negation-in)
+         (form/junction junction-type))))
 
-(defmethod negation-in :if
+(defmethod negation-in :implies
   [formula]
-  (let [ant (form/antecedent formula)
-        con (form/consequent formula)]
-    (form/and ant (form/not con))))
+  (let [antecedent (form/antecedent formula)
+        consequent (form/consequent formula)]
+    (form/implies
+     (negation-in antecedent)
+     (negation-in consequent))))
 
 (defn add-each-to-each
   [blocks to-add]
@@ -173,7 +200,7 @@
                     (map collapse-juncts)
                     (group-by test-fn))
         collapse-juncts (get groups true)
-        new-juncts      (concat (map form/juncts collapse-juncts)
+        new-juncts      (concat (mapcat form/juncts collapse-juncts)
                                 (get groups false))]
     (form/junction junction-type new-juncts)))
 
@@ -189,3 +216,10 @@
   [formula]
   (form/implies (collapse-juncts (form/antecedent formula))
                 (collapse-juncts (form/consequent formula))))
+
+(defn cnf [formula]
+  (-> formula
+      implication-out
+      negation-in
+      disjunction-in
+      collapse-juncts))
