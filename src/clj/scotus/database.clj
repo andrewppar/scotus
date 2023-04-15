@@ -30,7 +30,7 @@
                unique table-name column-name table-name column-name)]]
     (jdbc/execute! (state/db-connection) spec)))
 
-(defn create-table
+(defn create-table!
   "Create a table with `table-name` and `columns`."
   [table-name & columns]
   (let [table-key     (to-keyword table-name)
@@ -136,14 +136,16 @@
 
 (defn lookup-rows
   [table contexts row-specs]
-  (let [partitions (partition-all 10000 row-specs)]
-    (pmap (partial lookup-rows-serial table contexts) partitions)))
+  (->> row-specs
+       (partition-all 10000)
+       (pmap (partial lookup-rows-serial table contexts))
+       (apply concat)))
 
 
 (comment
   :testing
 
-  (create-table "subclass_of" "subclass" "superclass")
+  (create-table! "subclass_of" "subclass" "superclass")
   (add-rows "subclass_of"
             "nature" "anparisi" false [["cat" "mammal"] ["dog" "mammal"]])
   (add-rows "subclass_of"
@@ -163,6 +165,6 @@
   (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
   (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
 
-  (create-table "instance" "thing" "class")
+  (create-table! "instance" "thing" "class")
 
   )

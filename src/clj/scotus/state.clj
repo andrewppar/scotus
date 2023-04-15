@@ -79,7 +79,7 @@
 (defn get-table-args
   "Get the arguments associated with a table"
   [table]
-  (get-in @state [:index/predicate table]))
+  (into [] (get-in @state [:index/predicate table])))
 
 (defn refresh-index []
   (let [new-state (ig/init config [:index/predicate])]

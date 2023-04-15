@@ -108,6 +108,9 @@
 (defaccessor predicate [atomic-formula] :atomic
   (main-operator atomic-formula))
 
+(defn arg [atomic-formula argnum]
+  (get atomic-formula argnum))
+
 (def-formula-predicate atomic? :atomic)
 
 ;; negation
