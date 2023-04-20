@@ -2,18 +2,16 @@
   (:require
    [scotus.config  :as cfg]
    [scotus.formula :as f]
+   [scotus.setup   :as setup]
    [scotus.state   :as state]))
-
-
-(defn potentially-setup-scotus!
-  "Check if scotus has been initialized in the current environment"
-  [])
 
 (defn initialize-scotus!
   "Initialize all configuration and state for scotus to run."
   []
+  (when-not (setup/setup?)
+    (setup/setup!))
   (cfg/init!)
-  (state/init!)
+  (state/init!))
   #_#_ someday
   (map (fn [[predicate args]]
          (f/make-predicate predicate args))

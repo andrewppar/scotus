@@ -6,12 +6,10 @@
 
 ;; predicate must be a two place predicate; should we enforce that here?
 ;; That seems like a caller's responsibility at this point
-(defn transitive-closure-up
-  "Find the forward transitive closure of `arg` under `predicate`
-  for `contexts`.
-
-  NOTE: This assumes that `predicate` is a two-place predicate and
-  that the transitivity moves from the first to the second arg."
+(defn transitive-closure
+  "Find the forward transitive closure of `start-values`
+  for traversing `predicate` from `start-arg` over `transitive-arg`
+  for `contexts`"
   [start-values start-arg predicate transitive-arg contexts]
   (let [args           (state/get-table-args predicate)
         start-idx      (.indexOf args start-arg)
@@ -37,4 +35,4 @@
 (comment
 
   (db/lookup-rows "subclass_of" ["household" "nature"] [[]])
-  (transitive-closure-up ["persian"] "subclass" "subclass_of" "superclass" ["household" "nature"]))
+  (transitive-closure-up ["pet"]  "superclass" "subclass_of" "subclass" ["household" "nature"]))
