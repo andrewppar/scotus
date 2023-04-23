@@ -170,14 +170,13 @@
 
 (def-formula-predicate rule? :implies)
 
-;; Simple Semantic Features
+;;; Other Predicates
 
-(defn simple-triviality? [junction]
-  (let [juncts (set (juncts junction))]
-    (->> juncts
-         (some
-          (fn [junct]
-            (if (negation? junct)
-              (contains? juncts (negatum junct))
-              (contains? juncts (not junct)))))
-         boolean)))
+(defn literal?
+  "A formula that is either atomic or the negation of an atomic."
+  [formula]
+  (clojure.core/or
+   (atomic? formula)
+   (clojure.core/and
+    (negation? formula)
+    (atomic? (negatum formula)))))

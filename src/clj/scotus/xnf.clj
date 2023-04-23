@@ -217,16 +217,30 @@
   (form/implies (collapse-juncts (form/antecedent formula))
                 (collapse-juncts (form/consequent formula))))
 
+(defn simple-triviality? [xnf]
+  (if (form/junction? xnf)
+    (let [juncts (set (form/juncts xnf))]
+      (->> juncts
+           (some
+            (fn [junct]
+              (if (form/negation? junct)
+                (contains? juncts (form/negatum junct))
+                (contains? juncts (form/not junct)))))
+           boolean))
+    false))
+
 (defn remove-trivialities [xnf]
-  (let [formula-type (form/formula-type xnf)]
-    (form/junction formula-type
-                (reduce
-                 (fn [new-juncts junct]
-                   (if (form/simple-triviality? junct)
-                     new-juncts
-                     (conj new-juncts junct)))
-                 []
-                 (form/juncts xnf)))))
+  (if (form/junction? xnf)
+    (let [formula-type (form/formula-type xnf)]
+      (form/junction formula-type
+                     (reduce
+                      (fn [new-juncts junct]
+                        (if (simple-triviality? junct)
+                          new-juncts
+                          (conj new-juncts junct)))
+                      []
+                      (form/juncts xnf))))
+    xnf))
 
 (defn cnf [formula]
   (-> formula

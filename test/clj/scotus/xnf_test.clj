@@ -94,4 +94,23 @@
       (f/implies p (f/and q r))
       (f/and
        (f/or (f/not p) q)
-       (f/or (f/not p) r)))))
+       (f/or (f/not p) r))
+
+      p
+      p
+
+      (f/and p q)
+      (f/and p q)
+
+      (f/or p q)
+      (f/or p q)
+
+      (f/and p (f/and q r))
+      (f/and q r p)
+
+      (f/and p (f/not q))
+      (f/and p (f/not q))
+
+      (f/and p (f/not (f/or q r)))
+      (f/and (f/not q) (f/not r) p)
+      )))
