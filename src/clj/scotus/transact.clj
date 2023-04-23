@@ -38,16 +38,18 @@
        groups))))
 
 (defn assert!
-  ([formula asserter]
-   (assert! formula asserter "universal"))
-  ([formula asserter context]
-   (let [cnf  (xnf/cnf formula)
-         {:keys [atom neg rule]} (split-cnf cnf)]
-     (add-assertions atom :atom context asserter)
-     (add-assertions neg  :neg  context asserter)
-     ;; We don't support rules yet
-     #_(add-assertions rule :rule context asserter)
-     )))
+  [formula asserter context]
+  (let [cnf  (xnf/cnf formula)
+        {:keys [atom neg rule]} (split-cnf cnf)]
+    (add-assertions atom :atom context asserter)
+    (add-assertions neg  :neg  context asserter)
+    ;; We don't support rules yet
+    #_(add-assertions rule :rule context asserter)))
+
+(defn create-predicate!
+  [predicate args asserter]
+  (apply db/create-table! predicate args)
+  (assert! ["instance" predicate "predicate"] asserter "universal"))
 
 (comment
   (assert! (formula/and
