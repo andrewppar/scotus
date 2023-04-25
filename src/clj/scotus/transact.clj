@@ -14,9 +14,9 @@
          {}
          (formula/juncts cnf))
         (formula/atomic? cnf)
-        {:atom cnf}
+        {:atom [cnf]}
         (formula/negation? cnf)
-        {:neg cnf}
+        {:neg [cnf]}
         :else
         (ex-info (format "Formula %s is not CNF" cnf)
                  {})))
@@ -53,5 +53,10 @@
 
 (comment
   (assert! (formula/and
-            ["subclass_of" "baby" "human"])
-           "anparisi"))
+            ["subclass_of" "human" "person"])
+           "anparisi" "universal")
+
+  (assert! ["transitive_arg" "subclass_of" "superclass" "subclass_of" "subclass" "superclass"] "anparisi" "universal")
+  (assert! ["transitive_arg" "instance" "class" "subclass_of" "subclass" "superclass"] "anparisi" "universal")
+
+  )

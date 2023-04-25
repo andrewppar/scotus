@@ -4,13 +4,31 @@
 
 (def required-tables
   [["instance" "thing" "class"]
-   ["subcontext_of" "subcontext" "supercontext"]])
+   ["subcontext_of" "subcontext" "supercontext"]
+   ["subclass_of" "subclass" "superclass"]
+   ["transitive_arg"
+    "predicate" "arg" "transitive-predicate" "start-arg" "transitive-arg"]])
 
 (def required-rows
   {"instance"
-   [["universal"     "context"]
-    ["instance"      "predicate"]
-    ["subcontext_of" "predicate"]]})
+   [["universal"            "context"]
+    ["predicate"            "class"]
+    ["transitive-predicate" "class"]
+    ["reflexive-predicate"  "class"]
+    ["instance"             "predicate"]
+    ["subcontext_of"        "transitive-predicate"]
+    ["subclass_of"          "transitive-predicate"]
+    ["subclass_of"          "reflexive-predicate"]]
+   "transitive_arg"
+   [["subcontext_of"
+     "supercontext" "subcontext_of" "subcontext" "supercontext"]
+    ["subclass_of"
+     "superclass" "subclass_of" "subclass" "superclass"]
+    ["instance"
+     "class" "subclass_of" "subclass" "superclass"]]
+   "subclass_of"
+   [["transitive-predicate" "predicate"]
+    ["reflexive-predicate"  "predicate"]]})
 
 (defn setup? []
   (let [row-count (reduce-kv (fn [num _ rows]
@@ -26,7 +44,6 @@
     (boolean
      (when vals
        (= (count vals) row-count)))))
-
 
 (defn setup!
   []

@@ -1,5 +1,5 @@
 (ns scotus.formula-test
-  (:require [clojure.test       :refer [is]]
+  (:require [clojure.test       :refer [is deftest]]
             [scotus.formula     :as  f]
             [scotus.test-config :refer [deftest-simple-index]]))
 
@@ -20,11 +20,17 @@
     (is (not (f/formula? (f/implies p b))))
     (is (not (f/formula? b)))))
 
-(deftest-simple-index simple-triviality?-test
-  (let [p      ["subclass_of" "cat" "mammal"]
-        q      ["subclass_of" "dog" "mammal"]
-        not-p  (f/not p)]
-    (is (not (f/simple-triviality? (f/or p q))))
-    (is (f/simple-triviality? (f/or p not-p)))
-    (is (f/simple-triviality? (f/or p q not-p)))
-    (is (f/simple-triviality? (f/or not-p p q)))))
+(deftest t-signature
+  (is (= (f/signature
+          '["subclass_of" ?x "dog"])
+         {:predicate "subclass_of"
+          :arg-signature
+          '[?x nil]}))
+  (is (= (f/signature '["subclass_of" ?x ?y])
+         {:predicate "subclass_of"
+          :arg-signature
+          '[?x ?y]}))
+  (is (= (f/signature '["subclass_of" "dog" "mammal"])
+         {:predicate "subclass_of"
+          :arg-signature
+          [nil nil]})))

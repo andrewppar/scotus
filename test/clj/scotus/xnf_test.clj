@@ -13,6 +13,15 @@
     (is (= (xnf/implication-out (f/and p (f/implies p q)))
            (f/and p (f/or (f/not  p) q))))))
 
+(deftest-simple-index simple-triviality?-test
+  (let [p      ["subclass_of" "cat" "mammal"]
+        q      ["subclass_of" "dog" "mammal"]
+        not-p  (f/not p)]
+    (is (not (xnf/simple-triviality? (f/or p q))))
+    (is (xnf/simple-triviality? (f/or p not-p)))
+    (is (xnf/simple-triviality? (f/or p q not-p)))
+    (is (xnf/simple-triviality? (f/or not-p p q)))))
+
 (deftest-simple-index negation-in-test
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]

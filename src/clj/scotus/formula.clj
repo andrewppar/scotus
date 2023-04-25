@@ -62,6 +62,12 @@
        (do
          ~@body))))
 
+(defn variable?
+  [object]
+  (clojure.core/and
+   (symbol? object)
+   (str/starts-with? (name object) "?")))
+
 (defmulti formula?
   {:arglists '([formula])}
   (fn [formula]
@@ -100,7 +106,9 @@
   [formula]
   (and
    (predicate? (main-operator formula))
-   (every? string? (rest formula))))
+   (every?
+    (some-fn string? variable?)
+    (rest formula))))
 
 (defaccessor args [atomic-formula] :atomic
   (rest atomic-formula))
@@ -110,6 +118,20 @@
 
 (defn arg [atomic-formula argnum]
   (get atomic-formula argnum))
+
+(defn arg-by-name [arg-name [predicate & args]]
+  (-> predicate
+      state/get-table-args
+      (zipmap args)
+      (get arg-name)))
+
+(defn signature [atomic-formula]
+  {:predicate (predicate atomic-formula)
+   :arg-signature (reduce
+                   (fn [acc arg]
+                     (if (variable? arg) (conj acc arg) (conj acc nil)))
+                   []
+                   (args atomic-formula))})
 
 (def-formula-predicate atomic? :atomic)
 

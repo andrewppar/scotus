@@ -113,7 +113,9 @@
           (if (nil? value)
             result
             (conj result [:= col value])))
-        [:and [:in :context contexts]])))
+        (if (= contexts :universal)
+          [:and]
+          [:and [:in :context contexts]]))))
 
 (defn ^:private row-specs->where-body
   [contexts columns row-specs]
@@ -123,16 +125,24 @@
    [:or]
    row-specs))
 
+(defn empty-spec? [row-spec]
+  (every? nil? row-spec))
+
 (defn lookup-rows-serial
   [table contexts row-specs]
   (let [table-columns (map to-keyword (state/get-table-args table))]
     (jdbc/execute!
      (state/db-connection)
-     (-> (apply h/select  table-columns)
-         (h/from (to-keyword table))
-         (h/where
-          (row-specs->where-body contexts table-columns row-specs))
-         sql/format))))
+     (cond-> (apply h/select table-columns)
+       true
+       (h/from (to-keyword table))
+
+       (not (every? empty-spec? row-specs))
+       (h/where
+        (row-specs->where-body contexts table-columns row-specs))
+
+       true
+       sql/format))))
 
 (defn lookup-rows
   [table contexts row-specs]
@@ -140,7 +150,6 @@
        (partition-all 10000)
        (pmap (partial lookup-rows-serial table contexts))
        (apply concat)))
-
 
 (comment
   :testing
@@ -157,13 +166,14 @@
             "household" "anparisi" false [["cat" "pet"] ["dog" "pet"]])
 
   (add-rows "subclass_of"
-            "nature" "anparisi" false [["cat" "feline"] ["cat" "chordate"]])
+            "nature" "anparisi" false [["cat" "feline"] ["mammal" "chordate"]])
 
   (delete-rows "subclass_of"
                "nature" [["cat" "mammal"] ["dog" "mammal"]])
 
   (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
   (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
+
 
   (create-table! "instance" "thing" "class")
 

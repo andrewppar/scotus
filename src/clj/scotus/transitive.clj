@@ -4,10 +4,7 @@
             [scotus.state :as state]))
 
 
-;; predicate must be a two place predicate; should we enforce that here?
-;; That seems like a caller's responsibility at this point
-(defn transitive-closure
-  "Find the forward transitive closure of `start-values`
+(defn closure "Find the forward transitive closure of `start-values`
   for traversing `predicate` from `start-arg` over `transitive-arg`
   for `contexts`"
   [start-values start-arg predicate transitive-arg contexts]
@@ -31,8 +28,17 @@
           new-result (set/union result todo)]
       (if (seq new-todo) (recur new-todo new-result) new-result)))))
 
+(defn subcontext [context]
+  (if (= context "universal")
+    :universal
+    (closure
+     [context] "supercontext" "subcontext_of" "subcontext" ["universal"])))
+
 
 (comment
 
+  (subcontext "universal")
+
   (db/lookup-rows "subclass_of" ["household" "nature"] [[]])
-  (transitive-closure-up ["pet"]  "superclass" "subclass_of" "subclass" ["household" "nature"]))
+  (closure ["mammal"]  "superclass" "subclass_of" "subclass" ["household" "nature"]);; => #{"persian" "dog" "chihuahua" "mammal" "golden retriever" "cat"}
+)

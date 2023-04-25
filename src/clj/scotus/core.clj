@@ -9,10 +9,10 @@
 (defn initialize-scotus!
   "Initialize all configuration and state for scotus to run."
   []
-  (when-not (setup/setup?)
-    (setup/setup!))
   (cfg/init!)
-  (state/init!))
+  (state/init!)
+  (when-not (setup/setup?)
+    (setup/setup!)))
 
 (comment :someday
 (map (fn [[predicate args]]
@@ -42,3 +42,7 @@
   [predicate & {:keys [asserter args]}]
   (required-field "create-predicate!" "asserter" asserter)
   (transact/create-predicate! predicate args asserter))
+
+(comment
+  (initialize-scotus!)
+  )
