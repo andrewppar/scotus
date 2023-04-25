@@ -34,11 +34,13 @@
   (let [row-count (reduce-kv (fn [num _ rows]
                                (+ num (count rows)))
                              0 required-rows)
-        vals (try (db/lookup-rows
-                   "instance" ["universal"]
-                   [["instance" "predicate"]
-                    ["subcontext_of" "predicate"]
-                    ["universal" "context"]])
+        vals (try (reduce-kv
+                   (fn [results pred specs]
+                     (concat
+                      (db/lookup-rows pred :universal specs)
+                      results))
+                   []
+                   required-rows)
                (catch Exception _
                  false))]
     (boolean

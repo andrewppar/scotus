@@ -1,11 +1,28 @@
 (ns scotus.query
   (:require
-   [clojure.set :as set]
+   [clojure.set         :as set]
    [scotus.atomic-proof :as ap]
    [scotus.formula      :as formula]
    [scotus.transitive   :as transitive]
-   [scotus.xnf :as xnf]))
+   [scotus.xnf          :as xnf]))
 
+
+(defn join-results
+  [previous-bindings new-bindings]
+  (if (seq previous-bindings)
+  (let [common-bindings (set/intersection (set (keys (first previous-bindings)))
+                                          (set (keys (first new-bindings))))]
+    (reduce
+     (fn [result previous-binding]
+       (let [join-map (select-keys previous-binding common-bindings)
+             matches  (filter (fn [binding]
+                                (= (select-keys binding common-bindings)
+                                   join-map)) new-bindings)
+             join     (map (partial merge previous-binding) matches)]
+         (concat result join)))
+     []
+     previous-bindings))
+  new-bindings))
 
 (defn conjunction [conjuncts contexts]
   (let [conjunction-groups (vals (group-by formula/signature conjuncts))]
@@ -33,3 +50,8 @@
            formula/juncts
            (map (comp conjunction formula/juncts))
            (apply set/union)))))
+
+
+(query '[:and ["subclass_of" ?x "pet"] ["subclass_of" ?x "mammal"]] "universal")
+
+(query '["subclass_of" "pet" "mammal"] "universal")
