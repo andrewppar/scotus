@@ -13,6 +13,24 @@
 
 (def state (atom nil))
 
+(defn set-table-args
+  [all-table-info table]
+  (->> all-table-info
+       (filter
+        (fn [{:columns/keys [table_name]}]
+          (= table_name table)))
+       (sort-by :columns/ordinal_position)
+       (map :columns/column_name)))
+
+(defn set-table-count
+  [table db-connection]
+  (-> (h/select [[:count :*]])
+      (h/from (keyword table))
+      sql/format
+      ((partial jdbc/execute! db-connection))
+      first
+    (get :count)))
+
 (defmethod ig/init-key :index/predicate [_ {:keys [db-connection]}]
   (let [excluded-tables ["information_schema" "pg_catalog" "views"]
         excluded-cols ["id" "negative" "justification" "context"]
@@ -31,13 +49,11 @@
         tables      (distinct (map :columns/table_name raw-results))]
     (reduce
      (fn [result table]
-       (assoc result table
-              (->> raw-results
-                   (filter
-                    (fn [{:columns/keys [table_name]}]
-                      (= table_name table)))
-                   (sort-by :columns/ordinal_position)
-                   (map :columns/column_name))))
+       (-> result
+           (assoc-in [table :args]
+                     (set-table-args raw-results table))
+           (assoc-in [table :count]
+                     (set-table-count table db-connection))))
      {}
      tables)))
 
@@ -76,10 +92,16 @@
   []
   (get @state :database/connection))
 
-(defn get-table-args
+(defn table-args
   "Get the arguments associated with a table"
   [table]
-  (into [] (get-in @state [:index/predicate table])))
+  (into [] (get-in @state [:index/predicate table :args])))
+
+(defn table-count
+  "Get the number of rows in a table"
+  [table]
+  (get-in @state [:index/predicate table :count]))
+
 
 (defn refresh-index []
   (let [new-state (ig/init config [:index/predicate])]
@@ -89,4 +111,6 @@
   (get @state :index/predicate))
 
 (comment
-  (init!))
+  (init!)
+  (refresh-index)
+  )

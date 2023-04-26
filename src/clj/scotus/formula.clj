@@ -1,6 +1,5 @@
 (ns scotus.formula
   (:require
-   [clojure.string :as string]
    [clojure.string :as str]
    [scotus.state :as state]))
 
@@ -51,10 +50,10 @@
   (let [formula-arg          (first args)
         object-name          (-> formula-arg
                                  name
-                                 (string/replace "-" " "))
+                                 (str/replace "-" " "))
         accessor-name-string (-> accessor-name
                                  name
-                                 (string/replace "-" " "))]
+                                 (str/replace "-" " "))]
     `(defn ~accessor-name
        ~args
        (maybe-accessor-error
@@ -121,7 +120,7 @@
 
 (defn arg-by-name [arg-name [predicate & args]]
   (-> predicate
-      state/get-table-args
+      state/table-args
       (zipmap args)
       (get arg-name)))
 
@@ -148,6 +147,12 @@
   (second negation))
 
 (def-formula-predicate negation? :not)
+
+(defn variables [formula]
+  (case (formula-type formula)
+    :atomic (filter variable? (args formula))
+    :not    (variables (negatum formula))
+    :else   nil))
 
 ;; junction
 

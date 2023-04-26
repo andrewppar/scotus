@@ -2,6 +2,7 @@
   (:require
    [scotus.config   :as cfg]
    [scotus.formula  :as f]
+   [scotus.query    :as query]
    [scotus.setup    :as setup]
    [scotus.state    :as state]
    [scotus.transact :as transact]))
@@ -42,6 +43,11 @@
   [predicate & {:keys [asserter args]}]
   (required-field "create-predicate!" "asserter" asserter)
   (transact/create-predicate! predicate args asserter))
+
+(defn query
+  [formula context]
+  (query/query formula context))
+
 
 (comment
   (initialize-scotus!)

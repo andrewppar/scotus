@@ -76,7 +76,7 @@
   add those rows to the database."
   [table context justification negated? row-specs]
   ;; Use the args for validation
-  (let [args    (map to-keyword (state/get-table-args table))
+  (let [args    (map to-keyword (state/table-args table))
         columns `[:id ~@args :negative :justification :context]
         parts (partition-all 10000 row-specs)]
     (pmap
@@ -130,7 +130,7 @@
 
 (defn lookup-rows-serial
   [table contexts row-specs]
-  (let [table-columns (map to-keyword (state/get-table-args table))]
+  (let [table-columns (map to-keyword (state/table-args table))]
     (jdbc/execute!
      (state/db-connection)
      (cond-> (apply h/select table-columns)
@@ -168,11 +168,18 @@
   (add-rows "subclass_of"
             "nature" "anparisi" false [["cat" "feline"] ["mammal" "chordate"]])
 
+  (add-rows "subclass_of"
+            "household" "anparisi" false [["lizard" "pet"] ["snake" "pet"]])
+
+  (add-rows "subclass_of"
+            "nature" "anparisi" false [["lizard" "reptile"] ["snake" "reptile"] ["reptile" "animal"] ["mammal" "animal"]])
+
   (delete-rows "subclass_of"
                "nature" [["cat" "mammal"] ["dog" "mammal"]])
 
   (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
   (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
+
 
 
   (create-table! "instance" "thing" "class")

@@ -1,6 +1,7 @@
 (ns scotus.atomic-proof
   (:require
-   [clojure.set :as set]
+   [clojure.set       :as set]
+   [clojure.walk      :as walk]
    [scotus.database   :as db]
    [scotus.formula    :as formula]
    [scotus.transitive :as transitive]
@@ -8,7 +9,7 @@
 
 (defn expand-args
   [predicate args new-values arg-name]
-  (let [arg-map (zipmap (state/get-table-args predicate) args)]
+  (let [arg-map (zipmap (state/table-args predicate) args)]
     (map
      (fn [new-value]
        (-> arg-map
@@ -23,19 +24,21 @@
    (fn [arg] (when-not (formula/variable? arg) arg))
    (formula/args formula)))
 
-(defn results->bindings [predicate formula results]
-  (let [variable-map (reduce-kv
-                      (fn [acc k v]
-                        (if (formula/variable? k)
-                          (assoc acc (keyword predicate v) k)
-                          acc))
-                      {}
-                      (zipmap (formula/args formula)
-                              (state/get-table-args predicate)))]
-    (map
-     (fn [result]
-       (set/map-invert (set/rename-keys variable-map result)))
-     results)))
+(defn results->bindings
+  [results predicate formula]
+  (let [variable-map (->> (state/table-args predicate)
+                          (zipmap (formula/args formula))
+                          (reduce-kv
+                           (fn [acc k v]
+                             (if (formula/variable? k)
+                               (assoc acc (keyword predicate v) k)
+                               acc))
+                           {}))]
+    (map (fn [result]
+           (select-keys
+            (set/rename-keys result variable-map)
+            (vals variable-map)))
+         results)))
 
 (defn lookup [predicate formulas contexts]
   (let [row-specs (mapv args->row-spec formulas)]
@@ -44,7 +47,7 @@
 (defn variable-arg? [formula arg-name]
   (let [[pred & args] formula]
     (-> pred
-        state/get-table-args
+        state/table-args
         (zipmap args)
         (get arg-name)
         formula/variable?
@@ -147,7 +150,7 @@
         [pred & args]      canonical-formula
         predicate-args (map
                         (partial keyword pred)
-                        (state/get-table-args pred))
+                        (state/table-args pred))
         variable-positions (->> canonical-formula
                                 (map-indexed
                                  (fn [idx arg]
@@ -185,20 +188,50 @@
    (fn [row] (get row :instance/class))
    (db/lookup-rows "instance" contexts [[predicate nil]])))
 
-(defn atomic-proof [formulas contexts]
-  (when-not (formula-signatures-match? formulas)
-    (throw
-     (ex-info
-      "Cannot generate atomic proof for formulas with different signatures"
-      {:caused-by formulas})))
-  (let [canonical-formula  (first formulas)
-        [predicate & args] canonical-formula
-        predicate-types    (get-predicate-types predicate contexts)
+(defn prove-formulas
+  [formulas predicate contexts]
+  (let [predicate-types    (get-predicate-types predicate contexts)
         base-results       (lookup predicate formulas contexts)]
     (->> predicate-types
-         (map
+         (map ;;pmap
           (fn [predicate-type]
             (prove predicate-type formulas base-results {} contexts)))
-         (apply concat)
-         (results->bindings predicate canonical-formula)
-         set)))
+         (apply concat))))
+
+(defn substitute-bindings
+  [formula  bindings]
+  (if (seq bindings)
+    (distinct
+     (map
+      (fn [binding]
+        (walk/postwalk (fn [item] (get binding item item)) formula))
+      bindings))
+    [formula]))
+
+(defn join-bindings
+  [new-bindings old-bindings]
+  (if (seq old-bindings)
+    (let [common-bindings (set/intersection
+                           (set (keys (first new-bindings)))
+                           (set (keys (first old-bindings))))]
+      (mapcat
+       (fn [old-binding]
+         (let [old-sub (select-keys old-binding common-bindings)]
+           (->> new-bindings
+                (filter
+                 (fn [new-binding]
+                   (let [new-sub (select-keys new-binding common-bindings)]
+                     (= new-sub old-sub))))
+                (map (partial merge old-binding)))))
+       old-bindings))
+    new-bindings))
+
+
+(defn proof [formula bindings contexts]
+  (let [predicate (formula/predicate formula)]
+    (-> formula
+        (substitute-bindings bindings)
+        (prove-formulas predicate contexts)
+        (results->bindings predicate formula)
+        (join-bindings bindings)
+        set)))

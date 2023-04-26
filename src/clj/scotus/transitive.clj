@@ -8,7 +8,7 @@
   for traversing `predicate` from `start-arg` over `transitive-arg`
   for `contexts`"
   [start-values start-arg predicate transitive-arg contexts]
-  (let [args           (state/get-table-args predicate)
+  (let [args           (state/table-args predicate)
         start-idx      (.indexOf args start-arg)
         template       (into [] (repeat (count args) nil))
         transitive-key (keyword predicate transitive-arg)]
