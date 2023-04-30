@@ -1,0 +1,2 @@
+* TODO Give some feedback when assertions go wrong
+* TODO Make a way to retract statements

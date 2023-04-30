@@ -4,6 +4,7 @@
 
 (def required-tables
   [["instance" "thing" "class"]
+   ["subclass_of" "enumeration" "class"]
    ["subcontext_of" "subcontext" "supercontext"]
    ["subclass_of" "subclass" "superclass"]
    ["transitive_arg"

@@ -44,9 +44,14 @@
   (required-field "create-predicate!" "asserter" asserter)
   (transact/create-predicate! predicate args asserter))
 
+;;(defn retract!
+;;  [formula]
+
 (defn query
-  [formula context]
-  (query/query formula context))
+  ([formula]
+   (query formula "universal"))
+  ([formula context]
+   (query/query formula context)))
 
 
 (comment

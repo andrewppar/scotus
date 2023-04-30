@@ -51,6 +51,12 @@
   (apply db/create-table! predicate args)
   (assert! ["instance" predicate "predicate"] asserter "universal"))
 
+;;(defn retract! [formula]
+;;  (let [polarity [negation? predicate
+
+
+
+
 (comment
   (assert! (formula/and
             ["subclass_of" "human" "person"])
