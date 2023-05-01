@@ -1,6 +1,6 @@
 (ns scotus.query.canonicalize
-  (:require [scotus.formula :as formula]
-            [scotus.state   :as state]))
+  (:require [scotus.formula.formula :as formula]
+            [scotus.state           :as state]))
 
 (defn sort-formulas-by [group-and-sort-functions formulas]
   (let [[group-fn sort-fn] (first group-and-sort-functions)

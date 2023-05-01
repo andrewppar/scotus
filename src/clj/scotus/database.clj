@@ -87,13 +87,14 @@
 (defn delete-rows
   "Given a vector of row-specifications, a table, and a context,
   delete the corresponding rows from the table."
-  [table context row-specs]
+  [table context row-specs negated?]
   (let [ids (map (fn [spec] (hash (reduce str "" spec))) row-specs)]
     (jdbc/execute!
      (state/db-connection)
      (-> (h/delete-from (to-keyword table))
          (h/where
           [:in :id ids]
+          [:= :negated? negated?]
           [:= :context context])
          (sql/format {:inline true})))))
 
@@ -175,7 +176,7 @@
             "nature" "anparisi" false [["lizard" "reptile"] ["snake" "reptile"] ["reptile" "animal"] ["mammal" "animal"]])
 
   (delete-rows "subclass_of"
-               "nature" [["cat" "mammal"] ["dog" "mammal"]])
+               "nature" [["cat" "mammal"] ["dog" "mammal"]] false)
 
   (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
   (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])

@@ -1,8 +1,8 @@
 (ns scotus.xnf-test
-  (:require [clojure.test        :refer [are deftest is]]
-            [scotus.formula      :as f]
-            [scotus.test-config  :refer [deftest-simple-index] :as cfg]
-            [scotus.xnf          :as xnf]))
+  (:require [clojure.test           :refer [are deftest is]]
+            [scotus.formula.formula :as f]
+            [scotus.test-config     :refer [deftest-simple-index] :as cfg]
+            [scotus.xnf             :as xnf]))
 
 (deftest-simple-index implication-out-test
   (let [p ["subclass_of" "cat" "mammal"]

@@ -1,7 +1,7 @@
 (ns scotus.formula-test
-  (:require [clojure.test       :refer [is deftest]]
-            [scotus.formula     :as  f]
-            [scotus.test-config :refer [deftest-simple-index]]))
+  (:require [clojure.test               :refer [is deftest]]
+            [scotus.formula.formula     :as  f]
+            [scotus.test-config         :refer [deftest-simple-index]]))
 
 
 (deftest-simple-index predicate-test
@@ -20,7 +20,7 @@
     (is (not (f/formula? (f/implies p b))))
     (is (not (f/formula? b)))))
 
-(deftest t-signature
+(deftest-simple-index t-signature
   (is (= (f/signature
           '["subclass_of" ?x "dog"])
          {:predicate "subclass_of"

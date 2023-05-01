@@ -1,5 +1,5 @@
 (ns scotus.xnf
-  (:require [scotus.formula :as form]))
+  (:require [scotus.formula.formula :as form]))
 
 ;; Implication Out
 (defmulti implication-out

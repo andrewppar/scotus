@@ -1,11 +1,11 @@
 (ns scotus.atomic-proof
   (:require
-   [clojure.set       :as set]
-   [clojure.walk      :as walk]
-   [scotus.database   :as db]
-   [scotus.formula    :as formula]
-   [scotus.transitive :as transitive]
-   [scotus.state      :as state]))
+   [clojure.set               :as set]
+   [clojure.walk              :as walk]
+   [scotus.database           :as db]
+   [scotus.formula.formula    :as formula]
+   [scotus.transitive         :as transitive]
+   [scotus.state              :as state]))
 
 (defn expand-args
   [predicate args new-values arg-name]

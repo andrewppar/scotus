@@ -1,12 +1,16 @@
-(ns scotus.formula
+(ns scotus.formula.formula
   (:require
    [clojure.string :as str]
    [scotus.state :as state]))
 
 (def hierarchy (atom (make-hierarchy)))
 
-(swap! hierarchy derive :atomic   :formula)
-(swap! hierarchy derive :not      :formula)
+
+;; If literal means ground we'll have to update this when we start
+;; adding rules in.
+(swap! hierarchy derive :atomic   :literal)
+(swap! hierarchy derive :not      :literal)
+(swap! hierarchy derive :literal  :formula)
 (swap! hierarchy derive :and      :junction)
 (swap! hierarchy derive :or       :junction)
 (swap! hierarchy derive :junction :formula)
@@ -75,7 +79,7 @@
 
 (defmacro def-formula-predicate [pred-name formula-kind]
   `(defn ~pred-name [formula#]
-     (and (isa? @hierarchy (formula-type formula#) ~formula-kind)
+     (clojure.core/and (isa? @hierarchy (formula-type formula#) ~formula-kind)
       #_(= (formula-type formula#) ~formula-kind)
           (formula? formula#))))
 
@@ -90,20 +94,23 @@
          (make-predicate "father_of" ["father" "child"])
 
          (father-of "Andrew" "Anthony")
-         (father-of "Andrew" "George"))
+         (father-of "Andrew" "George")
+         )
 
 ;;; atoms
 
 (defn predicate?
   "A string that represents a predicate of the system."
   [object]
-  (and
+  (clojure.core/and
    (string? object)
    (.contains (keys (state/predicate-index)) object)))
 
+
+
 (defmethod formula? :atomic
   [formula]
-  (and
+  (clojure.core/and
    (predicate? (main-operator formula))
    (every?
     (some-fn string? variable?)
@@ -153,6 +160,22 @@
     :atomic (filter variable? (args formula))
     :not    (variables (negatum formula))
     :else   nil))
+
+;; literals
+
+(defn literal-accessor [formula accessor-fn]
+  (case (formula-type formula)
+    :atom (accessor-fn formula)
+    :neg  (accessor-fn (negatum formula))
+    :else nil))
+
+(defn literal-predicate
+  [formula]
+  (literal-accessor formula predicate))
+
+(defn literal-args
+  [formula]
+  (literal-accessor formula args))
 
 ;; junction
 
