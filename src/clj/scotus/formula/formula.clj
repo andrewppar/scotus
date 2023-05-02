@@ -165,7 +165,7 @@
 
 (defn literal-accessor [formula accessor-fn]
   (case (formula-type formula)
-    :atom (accessor-fn formula)
+    :atomic (accessor-fn formula)
     :neg  (accessor-fn (negatum formula))
     :else nil))
 

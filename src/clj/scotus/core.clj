@@ -7,7 +7,7 @@
    [scotus.state            :as state]
    [scotus.transact         :as transact]))
 
-(defn initialize-scotus!
+(defn init!
   "Initialize all configuration and state for scotus to run."
   []
   (cfg/init!)
@@ -98,15 +98,3 @@
                        (fn [result]
                          (get result 'scotus.core/?context))))]
   (transact/retract! formula contexts)))
-
-
-
-
-
-
-;;(query '["subclass_of" "human" ?superclass])
-
-
-(comment
-  (initialize-scotus!)
-  )

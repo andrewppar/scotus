@@ -4,7 +4,7 @@
 
 (def required-tables
   [["instance" "thing" "class"]
-   ["subclass_of" "enumeration" "class"]
+   ["arg_instance" "predicate" "argument" "class"]
    ["subcontext_of" "subcontext" "supercontext"]
    ["subclass_of" "subclass" "superclass"]
    ["transitive_arg"
@@ -16,8 +16,10 @@
     ["predicate"            "class"]
     ["transitive-predicate" "class"]
     ["reflexive-predicate"  "class"]
+    ["arg_instance"         "predicate"]
     ["instance"             "predicate"]
     ["subcontext_of"        "transitive-predicate"]
+    ["subcontext_of"        "reflexive-predicate"]
     ["subclass_of"          "transitive-predicate"]
     ["subclass_of"          "reflexive-predicate"]]
    "transitive_arg"

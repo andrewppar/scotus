@@ -55,7 +55,7 @@
   [formula asserter context]
   (let [cnf  (xnf/cnf formula)
         {:keys [atom neg rule]} (split-cnf cnf)]
-    (add-assertions atom :atom context asserter)
+    (add-assertions atom :atomic context asserter)
     (add-assertions neg  :neg  context asserter)
     ;; We don't support rules yet
     #_(add-assertions rule :rule context asserter)))
@@ -67,7 +67,7 @@
 
 (defn retract! [formula contexts]
   (let [formula-type (formula/formula-type formula)]
-    (if (contains? #{:atom :neg} formula-type)
+    (if (contains? #{:atomic :neg} formula-type)
       (let [predicate (formula/literal-predicate formula)
             args      [(formula/literal-args formula)]
             negated?  (= formula-type :neg)]

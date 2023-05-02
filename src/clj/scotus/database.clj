@@ -94,7 +94,7 @@
      (-> (h/delete-from (to-keyword table))
          (h/where
           [:in :id ids]
-          [:= :negated? negated?]
+          [:= :negative negated?]
           [:= :context context])
          (sql/format {:inline true})))))
 
