@@ -65,6 +65,30 @@
   (apply db/create-table! predicate args)
   (assert! ["instance" predicate "predicate"] asserter "universal"))
 
+(defmulti retract-instance!
+  {:arglists '([formula contexts])}
+  (fn [[_ _ retract-class] _]
+    retract-class))
+
+(defmethod retract-instance! "predicate"
+  [formula contexts]
+  (mapv
+   ;; TODO: This is inefficient
+   (fn [context]
+     (db/delete-rows "instance" context (formula/args formula) false))
+   contexts)
+  (db/drop-table! (nth formula 2)))
+
+(defmulti retract-atom!
+  {:arglists '([formula contexts])}
+  (fn [formula _]
+    (formula/predicate formula)))
+
+(defmethod retract-atom! "instance"
+  [formula contexts]
+  (retract-instance! formula contexts))
+
+
 (defn retract! [formula contexts]
   (let [formula-type (formula/formula-type formula)]
     (if (contains? #{:atomic :neg} formula-type)

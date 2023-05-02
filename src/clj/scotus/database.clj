@@ -54,6 +54,11 @@
     (create-index table-name "id" {:unique true}))
   (state/refresh-index))
 
+(defn drop-table! [table]
+  (->> [:drop-table table]
+       sql/format
+       (jdbc/execute! (state/db-connection))))
+
 ;;; add rows
 
 (defn ^:prvate add-computed-args

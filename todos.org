@@ -1,2 +1,3 @@
 * TODO Give some feedback when assertions go wrong
-* TODO Make a way to retract statements
+* DONE Make a way to retract statements
+CLOSED: [2023-05-01 Mon 20:32]
