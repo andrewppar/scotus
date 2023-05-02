@@ -7,16 +7,16 @@
   (cond (formula/junction? cnf)
         (reduce
          (fn [acc formula]
-           (let [update-key (cond (formula/atomic? formula) :atom
-                                  (formula/negation? formula) :neg
+           (let [update-key (cond (formula/atomic? formula) :atomic
+                                  (formula/negation? formula) :not
                                   :else :rule)]
              (update acc update-key (fnil conj #{}) formula)))
          {}
          (formula/juncts cnf))
         (formula/atomic? cnf)
-        {:atom [cnf]}
+        {:atomic [cnf]}
         (formula/negation? cnf)
-        {:neg [cnf]}
+        {:not [cnf]}
         :else
         (ex-info (format "Formula %s is not CNF" cnf)
                  {})))
@@ -36,14 +36,14 @@
 
 (defn add-assertions [formulas polarity context asserter]
   ;; we don't support rules yet
-  (when (or (= polarity :atom)
-            (= polarity :neg))
+  (when (or (= polarity :atomic)
+            (= polarity :not))
     (let [atoms     (case polarity
-                      :atom formulas
-                      :neg  (mapv formula/negatum formulas))
+                      :atomic formulas
+                      :not  (mapv formula/negatum formulas))
           groups   (add-context-asserts
                     (group-by formula/predicate formulas))
-          negated? (case polarity :atom false :neg true)]
+          negated? (case polarity :atomic false :not true)]
       (reduce-kv
        (fn [_ predicate to-assert]
          (let [specs    (mapv formula/args to-assert)]
@@ -54,9 +54,9 @@
 (defn assert!
   [formula asserter context]
   (let [cnf  (xnf/cnf formula)
-        {:keys [atom neg rule]} (split-cnf cnf)]
-    (add-assertions atom :atomic context asserter)
-    (add-assertions neg  :neg  context asserter)
+        {:keys [atomic not rule]} (split-cnf cnf)]
+    (add-assertions atomic :atomic context asserter)
+    (add-assertions not :not  context asserter)
     ;; We don't support rules yet
     #_(add-assertions rule :rule context asserter)))
 
@@ -77,7 +77,15 @@
    (fn [context]
      (db/delete-rows "instance" context (formula/args formula) false))
    contexts)
-  (db/drop-table! (nth formula 2)))
+  (db/drop-table! (second formula)))
+
+(defmethod retract-instance! :default
+  [formula contexts]
+  (mapv
+   ;; TODO: This is inefficient
+   (fn [context]
+     (db/delete-rows "instance" context (formula/args formula) false))
+   contexts))
 
 (defmulti retract-atom!
   {:arglists '([formula contexts])}
@@ -88,25 +96,27 @@
   [formula contexts]
   (retract-instance! formula contexts))
 
+(defmethod retract-atom! :default
+  [[predicate & args] contexts]
+  (map
+   (fn [context]
+     (db/delete-rows predicate context args false))
+   contexts))
 
 (defn retract! [formula contexts]
   (let [formula-type (formula/formula-type formula)]
-    (if (contains? #{:atomic :neg} formula-type)
+    (if (contains? #{:atomic :not} formula-type)
       (let [predicate (formula/literal-predicate formula)
             args      [(formula/literal-args formula)]
-            negated?  (= formula-type :neg)]
-        ;;TODO: This makes too many io calls - fix it
-        (map
-         (fn [context]
-           (db/delete-rows predicate context args negated?))
-         contexts))
+            negated?  (= formula-type :not)]
+        (if negated?
+          (map
+           (fn [context]
+             (db/delete-rows predicate context args negated?))
+           contexts)
+          (retract-atom! formula contexts)))
       ;; We don't support rules yet
-      nil
-      )))
-
-
-
-
+      nil)))
 
 (comment
   (assert! (formula/and

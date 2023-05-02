@@ -55,9 +55,13 @@
   (state/refresh-index))
 
 (defn drop-table! [table]
-  (->> [:drop-table table]
+  (->> table
+       to-keyword
+       h/drop-table
        sql/format
        (jdbc/execute! (state/db-connection))))
+
+
 
 ;;; add rows
 
