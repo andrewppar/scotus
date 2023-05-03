@@ -17,7 +17,7 @@
     ["transitive-predicate" "class"]
     ["reflexive-predicate"  "class"]
     ["arg_instance"         "predicate"]
-    ["instance"             "predicate"]
+    ["instance"             "transitive-predicate"]
     ["subcontext_of"        "transitive-predicate"]
     ["subcontext_of"        "reflexive-predicate"]
     ["subclass_of"          "transitive-predicate"]
@@ -33,15 +33,15 @@
    [["transitive-predicate" "predicate"]
     ["reflexive-predicate"  "predicate"]]
    "arg_instance"
-   ["instance" "class" "class"]
-   ["arg_instance" "predicate" "predicate"]
-   ["arg_instance" "class" "class"]
-   ["subcontext_of" "subcontext" "context"]
-   ["subcontext_of" "supercontext" "context"]
-   ["subclass_of" "subclass" "class"]
-   ["subclass_of" "superclass" "class"]
-   ["transitive_arg" "predicate" "predicate"]
-   ["transitive_arg" "transitive_predicate" "predicate"]})
+   [["instance" "class" "class"]
+    ["arg_instance" "predicate" "predicate"]
+    ["arg_instance" "class" "class"]
+    ["subcontext_of" "subcontext" "context"]
+    ["subcontext_of" "supercontext" "context"]
+    ["subclass_of" "subclass" "class"]
+    ["subclass_of" "superclass" "class"]
+    ["transitive_arg" "predicate" "predicate"]
+    ["transitive_arg" "transitive_predicate" "predicate"]]})
 
 (defn setup? []
   (let [row-count (reduce-kv (fn [num _ rows]

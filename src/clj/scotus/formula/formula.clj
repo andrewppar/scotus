@@ -100,13 +100,9 @@
 ;;; atoms
 
 (defn predicate?
-  "A string that represents a predicate of the system."
+  "A string"
   [object]
-
-   (string? object))
-   ))
-
-
+  (string? object))
 
 (defmethod formula? :atomic
   [formula]

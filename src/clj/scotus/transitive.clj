@@ -35,6 +35,17 @@
      [context] "supercontext" "subcontext_of" "subcontext" ["universal"])))
 
 
+(defn instance?
+  "Check whether `item` is an instance of `scotus-class`"
+  [item scotus-class contexts]
+  (let [start (map (fn [row]
+                     (get row :instance/class))
+                   (db/lookup-rows "instance" contexts [[item nil]]))]
+    start))
+
+(instance? "311" "sensor" :universal)
+
+
 (comment
 
   (subcontext "universal")

@@ -19,16 +19,20 @@
   (let [contexts (transitive/subcontext context)
         pred (formula/predicate formula)
         arg-names (state/table-args pred)
-        arg-instance (db/lookup-rows
-                      "arg_instance" contexts [[pred nil nil]])
+        name->type (reduce
+                      (fn [acc {:arg_instance/keys [class argument]}]
+                        (assoc acc argument class))
+                      {} (db/lookup-rows
+                          "arg_instance" contexts [[pred nil nil]]))
         arg->name (zipmap (formula/args formula) arg-names)
-
-        ]
-    [arg-names
-     arg-instance
-     arg->name]
-
+        arg->type (reduce-kv
+                   (fn [acc arg name]
+                     (assoc acc arg (get name->type name)))
+                   {} arg->name)]
+    arg->type
     ))
+
+
 
 
 (well-formed-atomic-assert

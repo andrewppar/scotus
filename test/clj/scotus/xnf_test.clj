@@ -4,7 +4,7 @@
             [scotus.test-config     :refer [deftest-simple-index] :as cfg]
             [scotus.xnf             :as xnf]))
 
-(deftest-simple-index implication-out-test
+(deftest implication-out-test
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]]
 
@@ -13,7 +13,7 @@
     (is (= (xnf/implication-out (f/and p (f/implies p q)))
            (f/and p (f/or (f/not  p) q))))))
 
-(deftest-simple-index simple-triviality?-test
+(deftest simple-triviality?-test
   (let [p      ["subclass_of" "cat" "mammal"]
         q      ["subclass_of" "dog" "mammal"]
         not-p  (f/not p)]
@@ -22,7 +22,7 @@
     (is (xnf/simple-triviality? (f/or p q not-p)))
     (is (xnf/simple-triviality? (f/or not-p p q)))))
 
-(deftest-simple-index negation-in-test
+(deftest negation-in-test
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]
         r ["subclass_of" "human" "mammal"]]
@@ -62,7 +62,7 @@
                                  [1 2 6 9] [3 4 6 9]
                                  [1 2 7 9] [3 4 7 9]]))
 
-(deftest-simple-index conjunction-in-test
+(deftest conjunction-in-test
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]
         r ["subclass_of" "human" "mammal"]]
@@ -81,7 +81,7 @@
       (f/or (f/and p (f/or q r)) p)
       (f/or (f/or (f/and p q) (f/and p r)) p))))
 
-(deftest-simple-index cnf-test
+(deftest cnf-test
   (let [p ["subclass_of" "cat" "mammal"]
         q ["subclass_of" "dog" "mammal"]
         r ["subclass_of" "human" "mammal"]]
