@@ -97,13 +97,18 @@
   [table]
   (into [] (get-in @state [:index/predicate table :args])))
 
+(defn tables
+  "Get all the tables in the database."
+  []
+  (keys (get @state :index/predicate)))
+
 (defn table-count
   "Get the number of rows in a table"
   [table]
   (get-in @state [:index/predicate table :count]))
 
 
-(defn refresh-index []
+(defn refresh-index! []
   (let [new-state (ig/init config [:index/predicate])]
     (clojure.core/reset! state new-state)))
 
@@ -112,5 +117,5 @@
 
 (comment
   (init!)
-  (refresh-index)
+  (refresh-index!)
   )

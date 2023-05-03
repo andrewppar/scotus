@@ -52,7 +52,7 @@
     (mapv (fn [column] (create-index table-name column {})) columns)
     ;; add a unique constraint for id
     (create-index table-name "id" {:unique true}))
-  (state/refresh-index))
+  (state/refresh-index!))
 
 (defn drop-table! [table]
   (->> table

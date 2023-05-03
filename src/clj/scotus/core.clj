@@ -12,8 +12,9 @@
   []
   (cfg/init!)
   (state/init!)
-  (when-not (setup/setup?)
-    (setup/setup!)))
+  (if-not (setup/setup?)
+    (setup/setup!)
+    :done))
 
 (comment :someday
 (map (fn [[predicate args]]

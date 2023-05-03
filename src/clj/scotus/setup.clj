@@ -31,7 +31,17 @@
      "class" "subclass_of" "subclass" "superclass"]]
    "subclass_of"
    [["transitive-predicate" "predicate"]
-    ["reflexive-predicate"  "predicate"]]})
+    ["reflexive-predicate"  "predicate"]]
+   "arg_instance"
+   ["instance" "class" "class"]
+   ["arg_instance" "predicate" "predicate"]
+   ["arg_instance" "class" "class"]
+   ["subcontext_of" "subcontext" "context"]
+   ["subcontext_of" "supercontext" "context"]
+   ["subclass_of" "subclass" "class"]
+   ["subclass_of" "superclass" "class"]
+   ["transitive_arg" "predicate" "predicate"]
+   ["transitive_arg" "transitive_predicate" "predicate"]})
 
 (defn setup? []
   (let [row-count (reduce-kv (fn [num _ rows]
@@ -59,3 +69,17 @@
    nil
    required-rows)
   :done)
+
+(defn tear-down!
+  []
+  (state/refresh-index!)
+  (mapv
+   (fn [predicate]
+     (db/drop-table! predicate))
+   (state/tables)))
+
+
+(comment
+  (setup!)
+  (tear-down!)
+  )

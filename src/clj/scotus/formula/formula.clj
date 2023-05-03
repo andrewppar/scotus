@@ -16,7 +16,6 @@
 (swap! hierarchy derive :junction :formula)
 (swap! hierarchy derive :implies  :formula)
 
-
 (defn main-operator
   [formula]
   (first formula))
@@ -46,7 +45,8 @@
               @hierarchy (formula-type object) formula-kind))
             (not (test-fn object)))
     (throw
-     (ex-info (format "%s is not %s" object object-type)
+     (ex-info (format "Syntactic Access Error: %s is not %s"
+                      object object-type)
               {:caused-by
                (format "Only %s has %s." object-type accessor-type)}))))
 
@@ -102,9 +102,9 @@
 (defn predicate?
   "A string that represents a predicate of the system."
   [object]
-  (clojure.core/and
-   (string? object)
-   (.contains (keys (state/predicate-index)) object)))
+
+   (string? object))
+   ))
 
 
 
