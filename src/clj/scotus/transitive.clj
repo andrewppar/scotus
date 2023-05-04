@@ -16,16 +16,15 @@
          result      #{}]
     (let [next-specs (mapv (fn [arg] (assoc template start-idx arg)) todo)
           next-vals  (db/lookup-rows predicate contexts next-specs)
-          ;; consider making this a transduce
           new-todo   (->> next-vals
-                          (map
-                           (fn [assert]
-                             (get assert transitive-key)))
-                          (filter
-                           (fn [value]
-                             (not (contains? result value))))
-                          set)
-          new-result (set/union result todo)]
+                        (map
+                         (fn [assert]
+                           (get assert transitive-key)))
+                        (filter
+                         (fn [value]
+                           (not (contains? result value))))
+                        set)
+          new-result (set (set/union result todo))]
       (if (seq new-todo) (recur new-todo new-result) new-result)))))
 
 (defn subcontext [context]
@@ -38,26 +37,33 @@
 (defn instance?
   "Check whether `item` is an instance of `scotus-class`"
   [item scotus-class contexts]
-  (let [start (map (fn [row]
-                     (get row :instance/class))
-                   (db/lookup-rows "instance" contexts [[item nil]]))]
-    (loop [todo start
-           seen #{}]
-      (if-not (seq todo)
-        false
-        (let [new-rows (map (fn [subclass]
-                              [sunclass nil]
-              next-items
-              (->> todo
-                   (mapv
-                    (db/lookup-rows "subclass_of" contexts (mapv (fn [subclass] [subclass nil]) todo))]
-          )))))
+  (let [start (->> (db/lookup-rows "instance" contexts [[item nil]])
+                 (map (fn [row] (get row :instance/class)))
+                 set)]
+    (if (contains? start scotus-class)
+      true
+      (loop [todo start
+             seen #{}]
+        (let [new-classes (->> todo
+                             (mapv (fn [subclass] [subclass nil]))
+                             (db/lookup-rows "subclass_of" contexts)
+                             (map (fn [row]
+                                    (get row :subclass_of/superclass)))
+                             set)
+              found?     (contains? new-classes scotus-class)]
+          (if found?
+            true
+            (let [new-todo (remove
+                            (fn [item] (contains? seen item))
+                            new-classes)]
+              (if (seq new-todo)
+                (recur new-todo (set (concat seen new-todo)))
+                false))))))))
 
 
 
 
 
-(instance? "311" "sensor" :universal)
 
 
 (comment

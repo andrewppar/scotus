@@ -17,26 +17,31 @@
 (defn well-formed-atomic-assert
   [formula context]
   (let [contexts (transitive/subcontext context)
-        pred (formula/predicate formula)
-        arg-names (state/table-args pred)
-        name->type (reduce
-                      (fn [acc {:arg_instance/keys [class argument]}]
-                        (assoc acc argument class))
-                      {} (db/lookup-rows
-                          "arg_instance" contexts [[pred nil nil]]))
-        arg->name (zipmap (formula/args formula) arg-names)
-        arg->type (reduce-kv
-                   (fn [acc arg name]
-                     (assoc acc arg (get name->type name)))
-                   {} arg->name)]
-    arg->type
-    ))
+        pred (formula/predicate formula)]
+    (if-not (predicate? pred)
+      false
+      (let [arg-names (state/table-args pred)
+            name->type (reduce
+                        (fn [acc {:arg_instance/keys [class argument]}]
+                          (assoc acc argument class))
+                        {} (db/lookup-rows
+                            "arg_instance" contexts [[pred nil nil]]))
+            arg->name (zipmap (formula/args formula) arg-names)
+            arg->type (reduce-kv
+                       (fn [acc arg name]
+                         (if-let [type (get name->type name)]
+                           (assoc acc arg type)
+                           acc))
+                       {} arg->name)]
+        (every? (fn [[arg type]] (transitive/instance? arg type contexts)) arg->type)))))
 
 
-
+(transitive/instance? "sandbox" "class" :universal)
 
 (well-formed-atomic-assert
- ["subclass_of" "cat" "dog"] "universal")
+ ["instance" "312" "sandbox"] "universal")
+
+
 
 
 

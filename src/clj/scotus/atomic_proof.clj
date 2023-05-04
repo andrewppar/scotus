@@ -24,22 +24,6 @@
    (fn [arg] (when-not (formula/variable? arg) arg))
    (formula/args formula)))
 
-(defn results->bindings
-  [results predicate formula]
-  (let [variable-map (->> (state/table-args predicate)
-                          (zipmap (formula/args formula))
-                          (reduce-kv
-                           (fn [acc k v]
-                             (if (formula/variable? k)
-                               (assoc acc (keyword predicate v) k)
-                               acc))
-                           {}))]
-    (map (fn [result]
-           (select-keys
-            (set/rename-keys result variable-map)
-            (vals variable-map)))
-         results)))
-
 (defn lookup [predicate formulas contexts]
   (let [row-specs (mapv args->row-spec formulas)]
     (db/lookup-rows predicate contexts row-specs)))
@@ -188,16 +172,6 @@
    (fn [row] (get row :instance/class))
    (db/lookup-rows "instance" contexts [[predicate nil]])))
 
-(defn prove-formulas
-  [formulas predicate contexts]
-  (let [predicate-types    (get-predicate-types predicate contexts)
-        base-results       (lookup predicate formulas contexts)]
-    (->> predicate-types
-         (map ;;pmap
-          (fn [predicate-type]
-            (prove predicate-type formulas base-results {} contexts)))
-         (apply concat))))
-
 (defn substitute-bindings
   [formula  bindings]
   (if (seq bindings)
@@ -207,6 +181,43 @@
         (walk/postwalk (fn [item] (get binding item item)) formula))
       bindings))
     [formula]))
+
+(defmulti prove-formulas
+  {:arglists '([formulas predicate contexts])}
+  (fn [_ predicate _]
+    predicate))
+
+(defmethod prove-formulas :default
+  [formulas predicate contexts]
+  (let [predicate-types    (get-predicate-types predicate contexts)
+        base-results       (lookup predicate formulas contexts)]
+    (->> predicate-types
+         (map ;;pmap
+          (fn [predicate-type]
+            (prove predicate-type formulas base-results {} contexts)))
+         (apply concat))))
+
+(defmethod prove-formulas "asserted"
+  [formulas _ contexts]
+  (let [predicate (-> formulas first (formula/arg 1) formula/predicate)
+        new-formulas (map (fn [formula] (formula/arg formula 1)) formulas)]
+    (lookup predicate new-formulas contexts)))
+
+(defn results->bindings
+  [results predicate formula]
+  (let [variable-map (->> (state/table-args predicate)
+                          (zipmap (formula/args formula))
+                          (reduce-kv
+                           (fn [acc k v]
+                             (if (formula/variable? k)
+                               (assoc acc (keyword predicate v) k)
+                               acc))
+                           {}))]
+    (map (fn [result]
+           (select-keys
+            (set/rename-keys result variable-map)
+            (vals variable-map)))
+         results)))
 
 (defn join-bindings
   [new-bindings old-bindings]
@@ -226,12 +237,19 @@
        old-bindings))
     new-bindings))
 
-
 (defn proof [formula bindings contexts]
-  (let [predicate (formula/predicate formula)]
+  (let [original-predicate (formula/predicate formula)
+        subpredicate (case original-predicate
+                       "asserted" (-> formula
+                                     (formula/arg 1)
+                                     formula/predicate)
+                       original-predicate)
+        proof-formula (case original-predicate
+                        "asserted" (formula/arg formula 1)
+                        formula)]
     (-> formula
-        (substitute-bindings bindings)
-        (prove-formulas predicate contexts)
-        (results->bindings predicate formula)
-        (join-bindings bindings)
-        set)))
+       (substitute-bindings bindings)
+       (prove-formulas original-predicate contexts)
+       (results->bindings subpredicate proof-formula)
+       (join-bindings bindings)
+       set)))

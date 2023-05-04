@@ -75,7 +75,7 @@
   (mapv
    ;; TODO: This is inefficient
    (fn [context]
-     (db/delete-rows "instance" context (formula/args formula) false))
+     (db/delete-rows "instance" context [(formula/args formula)] false))
    contexts)
   (db/drop-table! (second formula)))
 
@@ -84,7 +84,7 @@
   (mapv
    ;; TODO: This is inefficient
    (fn [context]
-     (db/delete-rows "instance" context (formula/args formula) false))
+     (db/delete-rows "instance" context [(formula/args formula)] false))
    contexts))
 
 (defmulti retract-atom!
@@ -100,7 +100,7 @@
   [[predicate & args] contexts]
   (map
    (fn [context]
-     (db/delete-rows predicate context args false))
+     (db/delete-rows predicate context [args] false))
    contexts))
 
 (defn retract! [formula contexts]
@@ -112,7 +112,7 @@
         (if negated?
           (map
            (fn [context]
-             (db/delete-rows predicate context args negated?))
+             (db/delete-rows predicate context [args] negated?))
            contexts)
           (retract-atom! formula contexts)))
       ;; We don't support rules yet

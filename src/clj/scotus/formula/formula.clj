@@ -106,11 +106,7 @@
 
 (defmethod formula? :atomic
   [formula]
-  (clojure.core/and
-   (predicate? (main-operator formula))
-   (every?
-    (some-fn string? variable?)
-    (rest formula))))
+  (predicate? (main-operator formula)))
 
 (defaccessor args [atomic-formula] :atomic
   (rest atomic-formula))
