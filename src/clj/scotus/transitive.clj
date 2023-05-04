@@ -41,7 +41,21 @@
   (let [start (map (fn [row]
                      (get row :instance/class))
                    (db/lookup-rows "instance" contexts [[item nil]]))]
-    start))
+    (loop [todo start
+           seen #{}]
+      (if-not (seq todo)
+        false
+        (let [new-rows (map (fn [subclass]
+                              [sunclass nil]
+              next-items
+              (->> todo
+                   (mapv
+                    (db/lookup-rows "subclass_of" contexts (mapv (fn [subclass] [subclass nil]) todo))]
+          )))))
+
+
+
+
 
 (instance? "311" "sensor" :universal)
 
