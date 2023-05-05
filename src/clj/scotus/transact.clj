@@ -1,6 +1,7 @@
 (ns scotus.transact
   (:require [scotus.database         :as db]
             [scotus.formula.formula  :as formula]
+            [scotus.formula.semantic :as semantic]
             [scotus.xnf              :as xnf]))
 
 (defn split-cnf [cnf]
@@ -55,6 +56,11 @@
   [formula asserter context]
   (let [cnf  (xnf/cnf formula)
         {:keys [atomic not rule]} (split-cnf cnf)]
+    (when-not (semantic/well-formed-assert cnf context)
+      (throw
+       (ex-info
+        (format "Formula %s is not well-formed" cnf)
+        {:caused-by formula})))
     (add-assertions atomic :atomic context asserter)
     (add-assertions not :not  context asserter)
     ;; We don't support rules yet
