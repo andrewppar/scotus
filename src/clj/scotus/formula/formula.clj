@@ -193,6 +193,20 @@
 (def-formula-predicate conjunction? :and)
 (def-formula-predicate disjunction? :or)
 
+(defn add-juncts [base-junction new-junction]
+  (let [base-type (formula-type base-junction)
+        new-type  (formula-type new-junction)]
+    (when-not (= base-type new-type)
+      (throw
+       (ex-info
+        (format "Cannot add %s juncts to %s" new-type base-type)
+        {:caused-by
+         `(= (formula-type ~base-junction) (formula-type ~new-junction))})))
+    (reduce
+     (fn [acc junct] (conj acc junct))
+     base-junction
+     (juncts new-junction))))
+
 ;; conditional
 
 (defmethod formula? :implies

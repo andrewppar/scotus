@@ -15,7 +15,7 @@
   (loop [todo        start-values
          result      #{}]
     (let [next-specs (mapv (fn [arg] (assoc template start-idx arg)) todo)
-          next-vals  (db/lookup-rows predicate contexts next-specs)
+          next-vals  (db/lookup-rows predicate contexts false next-specs)
           new-todo   (->> next-vals
                         (map
                          (fn [assert]
@@ -30,14 +30,17 @@
 (defn subcontext [context]
   (if (= context "universal")
     :universal
-    (closure
-     [context] "supercontext" "subcontext_of" "subcontext" ["universal"])))
+    (-> []
+        (conj context)
+        (closure
+         "supercontext" "subcontext_of" "subcontext" ["universal"])
+        (conj context))))
 
 
 (defn instance?
   "Check whether `item` is an instance of `scotus-class`"
   [item scotus-class contexts]
-  (let [start (->> (db/lookup-rows "instance" contexts [[item nil]])
+  (let [start (->> (db/lookup-rows "instance" contexts false [[item nil]])
                  (map (fn [row] (get row :instance/class)))
                  set)]
     (if (contains? start scotus-class)
@@ -46,7 +49,7 @@
              seen #{}]
         (let [new-classes (->> todo
                              (mapv (fn [subclass] [subclass nil]))
-                             (db/lookup-rows "subclass_of" contexts)
+                             (db/lookup-rows false "subclass_of" contexts)
                              (map (fn [row]
                                     (get row :subclass_of/superclass)))
                              set)
@@ -70,6 +73,6 @@
 
   (subcontext "universal")
 
-  (db/lookup-rows "subclass_of" ["household" "nature"] [[]])
+  (db/lookup-rows "subclass_of" ["household" "nature"] false [[]])
   (closure ["mammal"]  "superclass" "subclass_of" "subclass" ["household" "nature"]);; => #{"persian" "dog" "chihuahua" "mammal" "golden retriever" "cat"}
 )

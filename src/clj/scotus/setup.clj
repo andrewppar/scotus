@@ -13,9 +13,9 @@
 (def required-rows
   {"instance"
    [["universal"            "context"]
+    ["class"                "class"]
+    ["context"              "class"]
     ["predicate"            "class"]
-    ["transitive-predicate" "class"]
-    ["reflexive-predicate"  "class"]
     ["arg_instance"         "predicate"]
     ["instance"             "transitive-predicate"]
     ["subcontext_of"        "transitive-predicate"]
@@ -50,7 +50,7 @@
         vals (try (reduce-kv
                    (fn [results pred specs]
                      (concat
-                      (db/lookup-rows pred :universal specs)
+                      (db/lookup-rows pred :universal false specs)
                       results))
                    []
                    required-rows)

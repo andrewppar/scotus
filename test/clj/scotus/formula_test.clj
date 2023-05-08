@@ -1,7 +1,6 @@
 (ns scotus.formula-test
-  (:require [clojure.test               :refer [is deftest]]
-            [scotus.formula.formula     :as  f]
-            [scotus.test-config         :refer [deftest-simple-index]]))
+  (:require [clojure.test           :refer [is deftest]]
+            [scotus.formula.formula :as  f]))
 
 
 (deftest predicate-test

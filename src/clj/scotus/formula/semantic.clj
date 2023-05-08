@@ -15,17 +15,29 @@
   [object]
   (.contains (keys (state/predicate-index)) object))
 
+(defn generate-semantic-error [arg->type contexts]
+  (->> arg->type
+       (map (fn [[arg type]]
+              {:arg arg
+               :type type
+               :value
+               (transitive/instance? arg type contexts)}))
+       (filter (comp not :value))
+       (reduce (fn [error {:keys [arg type]}]
+                 (conj error ["unknown" ["instance" arg type]]))
+               [:and])))
+
 (defn well-formed-atomic-assert
   [formula contexts]
   (let [pred (formula/predicate formula)]
     (if-not (predicate? pred)
-      false
+      {:well-formed? false :error `(not (predicate? ~pred))}
       (let [arg-names (state/table-args pred)
             name->type (reduce
                         (fn [acc {:arg_instance/keys [class argument]}]
                          (assoc acc argument class))
                         {} (db/lookup-rows
-                            "arg_instance" contexts [[pred nil nil]]))
+                            "arg_instance" contexts false [[pred nil nil]]))
             arg->name (zipmap (formula/args formula) arg-names)
             arg->type (reduce-kv
                        (fn [acc arg name]
@@ -38,22 +50,9 @@
         (if (every?
              (fn [[arg type]] (transitive/instance? arg type contexts))
              arg->type)
-          {:well-formed true :error nil}
-          {:well-formed false
-           :error (string/join
-                   "\n"
-                   (->> arg->type
-                        (map (fn [[arg type]]
-                               [:arg arg
-                                :type type
-                                :value
-                                (transitive/instance? arg type contexts)]))
-                        (filter :value)
-                        (map (fn [{:keys [arg type]}]
-                               (format "%s is not a %s" arg type)))))})))))
-
-
-
+          {:well-formed? true :error nil}
+          {:well-formed? false
+           :error (generate-semantic-error arg->type contexts)})))))
 
 (defmulti well-formed-assert-internal
   {:arglists '([formula contexts])}
@@ -82,9 +81,16 @@
 
 (defmethod well-formed-assert-internal :junction
   [formula contexts]
-  (every?
-   (fn [junct]
-     (well-formed-assert-internal junct contexts))
+  (reduce
+   (fn [acc junct]
+     (let [{:keys [well-formed? error]}
+           (well-formed-assert-internal junct contexts)]
+       (if well-formed?
+         acc
+         {:well-formed? false
+          :error
+          (update acc :error (fnil formula/add-juncts [:and]) error)})))
+   {:well-formed? true :error nil}
    (formula/juncts formula)))
 
 (defmethod well-formed-assert-internal :implies

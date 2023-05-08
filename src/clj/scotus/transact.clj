@@ -43,7 +43,7 @@
                       :atomic formulas
                       :not  (mapv formula/negatum formulas))
           groups   (add-context-asserts
-                    (group-by formula/predicate formulas))
+                    (group-by formula/predicate atoms))
           negated? (case polarity :atomic false :not true)]
       (reduce-kv
        (fn [_ predicate to-assert]
@@ -52,19 +52,47 @@
        nil
        groups))))
 
+(defn merge-assert-maps [map-one map-two]
+  (let [old-count (get map-one :assert-count)
+        new-count (get map-two :assert-count)]
+    {:assert-count (+ old-count new-count)}))
+
 (defn assert!
-  [formula asserter context]
+  [formula asserter context &
+   {:keys [with-semantic-check? assert-requirements?]
+    :or {with-semantic-check? true assert-requirements? true}}]
   (let [cnf  (xnf/cnf formula)
+        assert-map (atom {:assert-count 0})
         {:keys [atomic not rule]} (split-cnf cnf)]
-    (when-not (semantic/well-formed-assert cnf context)
-      (throw
-       (ex-info
-        (format "Formula %s is not well-formed" cnf)
-        {:caused-by formula})))
-    (add-assertions atomic :atomic context asserter)
-    (add-assertions not :not  context asserter)
-    ;; We don't support rules yet
-    #_(add-assertions rule :rule context asserter)))
+    (when with-semantic-check?
+      (let [{:keys [well-formed? error]}
+            (semantic/well-formed-assert cnf context)]
+        (when-not well-formed?
+          (if (and assert-requirements?
+                   (formula/conjunction? error))
+            (->> context
+                 (assert! (apply formula/and
+                                 (map
+                                  (fn [atomic]
+                                    (formula/arg atomic 1))
+                                  (formula/juncts error))) asserter)
+                 (swap! assert-map merge-assert-maps))
+            (throw
+             (ex-info
+              (format "Formula %s is not well-formed" cnf)
+              {:caused-by error}))))))
+    (reduce
+     (fn [acc item]
+       (if item
+         (update acc :assert-count
+                 + (get (first (first item)) :next.jdbc/update-count))
+         acc))
+     @assert-map
+     [(add-assertions atomic :atomic context asserter)
+      (add-assertions not :not  context asserter)
+      ;; We don't support rules yet
+      #_(add-assertions rule :rule context asserter)
+      ])))
 
 (defn create-predicate!
   [predicate args asserter]
@@ -120,6 +148,7 @@
            (fn [context]
              (db/delete-rows predicate context [args] negated?))
            contexts)
+          ;; TODO: make this output look like the output of assert!
           (retract-atom! formula contexts)))
       ;; We don't support rules yet
       nil)))

@@ -1,7 +1,6 @@
 (ns scotus.xnf-test
   (:require [clojure.test           :refer [are deftest is]]
             [scotus.formula.formula :as f]
-            [scotus.test-config     :refer [deftest-simple-index] :as cfg]
             [scotus.xnf             :as xnf]))
 
 (deftest implication-out-test

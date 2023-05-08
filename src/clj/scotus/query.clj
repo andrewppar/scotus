@@ -10,7 +10,10 @@
 (defn conjunction [conjuncts contexts]
   (reduce
    (fn [bindings formula]
-     (ap/proof formula bindings contexts))
+     (let [results (ap/proof formula bindings contexts)]
+       (if (= results #{})
+         (reduced #{})
+         results)))
    #{}
    (cz/sort-conjuncts conjuncts)))
 

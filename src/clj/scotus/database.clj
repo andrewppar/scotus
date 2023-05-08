@@ -109,56 +109,57 @@
 
 ;;; lookup rows
 (defn ^:private row-spec->conjunction
-  [contexts columns row-spec]
+  [contexts columns negated? row-spec]
   (when-not (>= (count columns) (count row-spec))
     (throw
      (ex-info
       (format "Row specification \"%s\" cannot be used with columns: %s"
               row-spec columns)
       {:caused-by `(>= (count ,columns) (count ,row-spec))})))
-  (->> row-spec
-       (zipmap columns)
-       (reduce-kv
-        (fn [result col value]
-          (if (nil? value)
-            result
-            (conj result [:= col value])))
-        (if (= contexts :universal)
-          [:and]
-          [:and [:in :context contexts]]))))
+  (let [base-conjunct (cond-> [:and]
+                        (not= contexts :universal)
+                        (conj [:in :context contexts])
+                        true (conj [:= :negative negated?]))]
+    (->> row-spec
+         (zipmap columns)
+         (reduce-kv
+          (fn [result col value]
+            (if (nil? value)
+              result
+              (conj result [:= col value])))
+          base-conjunct))))
 
 (defn ^:private row-specs->where-body
-  [contexts columns row-specs]
+  [contexts columns negated? row-specs]
   (reduce
    (fn [acc row-spec]
-     (conj acc (row-spec->conjunction contexts columns row-spec)))
+     (conj acc (row-spec->conjunction contexts columns negated? row-spec)))
    [:or]
+
    row-specs))
 
 (defn empty-spec? [row-spec]
   (every? nil? row-spec))
 
 (defn lookup-rows-serial
-  [table contexts row-specs]
+  [table contexts negated? row-specs]
   (let [table-columns (map to-keyword (state/table-args table))]
     (jdbc/execute!
      (state/db-connection)
      (cond-> (apply h/select table-columns)
-       true
-       (h/from (to-keyword table))
+       true (h/from (to-keyword table))
 
        (not (every? empty-spec? row-specs))
        (h/where
-        (row-specs->where-body contexts table-columns row-specs))
+        (row-specs->where-body contexts table-columns negated? row-specs))
 
-       true
-       sql/format))))
+       true sql/format))))
 
 (defn lookup-rows
-  [table contexts row-specs]
+  [table contexts negated? row-specs]
   (->> row-specs
        (partition-all 10000)
-       (pmap (partial lookup-rows-serial table contexts))
+       (pmap (partial lookup-rows-serial table contexts negated?))
        (apply concat)))
 
 (comment
@@ -187,8 +188,8 @@
   (delete-rows "subclass_of"
                "nature" [["cat" "mammal"] ["dog" "mammal"]] false)
 
-  (lookup-rows "subclass_of" ["nature" "household"] [["cat"]])
-  (lookup-rows "subclass_of" ["nature" "household"] [[nil "dog"]])
+  (lookup-rows "subclass_of" ["nature" "household"] false [["cat"]])
+  (lookup-rows "subclass_of" ["nature" "household"] false [[nil "dog"]])
 
 
 

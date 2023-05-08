@@ -24,9 +24,9 @@
    (fn [arg] (when-not (formula/variable? arg) arg))
    (formula/args formula)))
 
-(defn lookup [predicate formulas contexts]
+(defn lookup [predicate formulas contexts negated?]
   (let [row-specs (mapv args->row-spec formulas)]
-    (db/lookup-rows predicate contexts row-specs)))
+    (db/lookup-rows predicate contexts negated? row-specs)))
 
 (defn variable-arg? [formula arg-name]
   (let [[pred & args] formula]
@@ -50,7 +50,7 @@
 
 (defn transitive-predicate-map [predicate contexts]
   (->> [[predicate nil nil nil nil]]
-       (db/lookup-rows "transitive_arg" contexts)
+       (db/lookup-rows "transitive_arg" contexts false)
        (map
         (fn [result]
           (reduce-kv
@@ -102,7 +102,7 @@
                        (expand-args predicate args new-args arg))
                      formulas))))
         [])
-       (db/lookup-rows predicate contexts)))
+       (db/lookup-rows predicate contexts false)))
 
 (defn transitive-lookup
   [predicate formulas results contexts {:keys [arg] :as transitive-map}]
@@ -170,7 +170,7 @@
 (defn get-predicate-types [predicate contexts]
   (map
    (fn [row] (get row :instance/class))
-   (db/lookup-rows "instance" contexts [[predicate nil]])))
+   (db/lookup-rows "instance" contexts false [[predicate nil]])))
 
 (defn substitute-bindings
   [formula  bindings]
@@ -190,7 +190,7 @@
 (defmethod prove-formulas :default
   [formulas predicate contexts]
   (let [predicate-types    (get-predicate-types predicate contexts)
-        base-results       (lookup predicate formulas contexts)]
+        base-results       (lookup predicate formulas contexts false)]
     (->> predicate-types
          (map ;;pmap
           (fn [predicate-type]
@@ -201,7 +201,7 @@
   [formulas _ contexts]
   (let [predicate (-> formulas first (formula/arg 1) formula/predicate)
         new-formulas (map (fn [formula] (formula/arg formula 1)) formulas)]
-    (lookup predicate new-formulas contexts)))
+    (lookup predicate new-formulas contexts false)))
 
 (defn results->bindings
   [results predicate formula]
@@ -237,7 +237,7 @@
        old-bindings))
     new-bindings))
 
-(defn proof [formula bindings contexts]
+(defn prove-atom [formula bindings contexts]
   (let [original-predicate (formula/predicate formula)
         subpredicate (case original-predicate
                        "asserted" (-> formula
@@ -253,3 +253,17 @@
        (results->bindings subpredicate proof-formula)
        (join-bindings bindings)
        set)))
+
+(defn prove-negation [formula bindings contexts]
+  (let [negatum      (formula/negatum formula)
+        new-formulas (substitute-bindings negatum bindings)
+        predicate (formula/predicate negatum)]
+    (-> predicate
+        (lookup new-formulas contexts true)
+        (results->bindings predicate negatum)
+        (join-bindings bindings))))
+
+(defn proof [formula bindings contexts]
+  (if (formula/negation? formula)
+    (prove-negation formula bindings contexts)
+    (prove-atom formula bindings contexts)))
