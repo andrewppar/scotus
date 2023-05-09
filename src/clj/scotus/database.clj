@@ -129,6 +129,7 @@
               (conj result [:= col value])))
           base-conjunct))))
 
+
 (defn ^:private row-specs->where-body
   [contexts columns negated? row-specs]
   (reduce
@@ -140,6 +141,7 @@
 
 (defn empty-spec? [row-spec]
   (every? nil? row-spec))
+
 
 (defn lookup-rows-serial
   [table contexts negated? row-specs]

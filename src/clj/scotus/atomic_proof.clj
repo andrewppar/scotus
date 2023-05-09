@@ -208,7 +208,15 @@
   (let [asserted-formulas (prove-formulas
                            (map (fn [form]
                                   ["asserted" (formula/arg form 1)])
-                                formulas))]
+                                formulas)
+                           "asserted"
+                           contexts)
+        ]
+    ;; Create a map of named args to bindings for both formulas
+    ;; and asserted formulas, take the difference, and treat those
+    ;; as a result -- this implements [unknown [exists bindings PHI]]
+    ;; but we treat variables as implicitly universally quantified so
+    ;; I guess it's ok...
     ))
 
 

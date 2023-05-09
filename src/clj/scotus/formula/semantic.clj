@@ -87,9 +87,9 @@
            (well-formed-assert-internal junct contexts)]
        (if well-formed?
          acc
-         {:well-formed? false
-          :error
-          (update acc :error (fnil formula/add-juncts [:and]) error)})))
+         (-> acc
+            (assoc :well-formed? false)
+            (update :error (fnil formula/add-juncts [:and]) error)))))
    {:well-formed? true :error nil}
    (formula/juncts formula)))
 
