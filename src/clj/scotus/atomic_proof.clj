@@ -203,6 +203,15 @@
         new-formulas (map (fn [formula] (formula/arg formula 1)) formulas)]
     (lookup predicate new-formulas contexts false)))
 
+(defmethod prove-formulas "unknown"
+  [formulas _ contexts]
+  (let [asserted-formulas (prove-formulas
+                           (map (fn [form]
+                                  ["asserted" (formula/arg form 1)])
+                                formulas))]
+    ))
+
+
 (defn results->bindings
   [results predicate formula]
   (let [variable-map (->> (state/table-args predicate)
