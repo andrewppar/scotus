@@ -203,22 +203,39 @@
         new-formulas (map (fn [formula] (formula/arg formula 1)) formulas)]
     (lookup predicate new-formulas contexts false)))
 
+(defn fully-bound?
+  ;;TODO: Move this to the formula ns when it gets used
+  ;; more than once.
+  [formula]
+  (and
+   (formula/atomic? formula)
+   (every?
+    (fn [arg] (not (formula/variable? arg)))
+    (formula/args formula))))
+
+(defn db-response->formula
+  [db-response]
+  (let [predicate (-> db-response keys first namespace)
+        arg-names (state/table-args predicate)
+        args      (map
+                   (fn [arg-name]
+                     (get db-response (keyword predicate arg-name)))
+                   arg-names)]
+   `[~predicate ~@args]))
+
 (defmethod prove-formulas "unknown"
   [formulas _ contexts]
-  (let [asserted-formulas (prove-formulas
-                           (map (fn [form]
-                                  ["asserted" (formula/arg form 1)])
-                                formulas)
-                           "asserted"
-                           contexts)
-        ]
-    ;; Create a map of named args to bindings for both formulas
-    ;; and asserted formulas, take the difference, and treat those
-    ;; as a result -- this implements [unknown [exists bindings PHI]]
-    ;; but we treat variables as implicitly universally quantified so
-    ;; I guess it's ok...
-    ))
-
+  (let [subformulas (map (fn [form] (formula/arg form 1)) formulas)]
+    (when-not (every? fully-bound? subformulas)
+      (throw
+       (ex-info "Attempted to prove \"unknown\" with unbound vars."
+                {:caused-by formulas})))
+    (let [asserted-subforms (map (fn [form] ["asserted" form]) subformulas)
+          asserted-formulas (->> (prove-formulas
+                                  asserted-subforms "asserted" contexts)
+                                 (map db-response->formula)
+                                 set)]
+      (set/difference (set subformulas) asserted-formulas))))
 
 (defn results->bindings
   [results predicate formula]

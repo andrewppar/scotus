@@ -20,6 +20,9 @@
   [formula]
   (first formula))
 
+(defn args [formula]
+  (rest formula))
+
 (defn operator-type
   [operator]
   (if (string? operator) :atomic operator))
@@ -107,9 +110,6 @@
 (defmethod formula? :atomic
   [formula]
   (predicate? (main-operator formula)))
-
-(defaccessor args [atomic-formula] :atomic
-  (rest atomic-formula))
 
 (defaccessor predicate [atomic-formula] :atomic
   (main-operator atomic-formula))
@@ -236,3 +236,48 @@
    (clojure.core/and
     (negation? formula)
     (atomic? (negatum formula)))))
+
+(comment
+  ;; Experimental Stuff
+
+  (defn simple-recursive-property [formula property]
+    (case (formula-type formula)
+      :atomic   (property formula)
+      :not      (property (negatum formula))
+      :junction (every? property (juncts formula))
+      :implies  (and
+                 (property (antecedent formula))
+                 (property (consequent formula)))))
+
+  (defn fully-bound?
+    "Check whether a formula is fully bound."
+    [formula]
+    (simple-recursive-property
+     formula
+     (fn [expression]
+       (or (not (atomic? expression))
+           (every? (fn [arg] (not (variable? arg))) (args formula))))))
+
+
+;;; I Think there's a way to use the above function here.
+;;; TEST THIS
+  (defn gather [gathered test-fn gather-fn expression]
+    (let [acc (if (test-fn expression)
+                (conj gathered (gather-fn expression))
+                gathered)]
+      (case (formula-type formula)
+        :atomic   (reduce
+                   (fn [result other-expression]
+                     (gather result test-fn gather-fn other-exprssion))
+                   acc
+                   formula)
+        :not      (gather acc test-fn gather-fn (negatum formula))
+        :junction (reduce
+                   (fn [result subfomula]
+                     (gather result test-fn gather-fn subformula))
+                   acc
+                   (junct formula))
+        :implies (-> acc
+                     (gather test-fn gather-fn (antecedent expression))
+                     (gather test-fn gather-fn (consequent expression))))))
+  )
