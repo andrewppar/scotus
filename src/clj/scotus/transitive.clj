@@ -34,7 +34,7 @@
         (conj context)
         (closure
          "supercontext" "subcontext_of" "subcontext" ["universal"])
-        (conj context))))
+        (conj "universal"))))
 
 
 (defn instance?

@@ -191,11 +191,13 @@
   [formulas predicate contexts]
   (let [predicate-types    (get-predicate-types predicate contexts)
         base-results       (lookup predicate formulas contexts false)]
-    (->> predicate-types
-         (map ;;pmap
-          (fn [predicate-type]
-            (prove predicate-type formulas base-results {} contexts)))
-         (apply concat))))
+    (if (seq predicate-types)
+      (->> predicate-types
+           (map ;;pmap
+            (fn [predicate-type]
+              (prove predicate-type formulas base-results {} contexts)))
+           (apply concat))
+      base-results)))
 
 (defmethod prove-formulas "asserted"
   [formulas _ contexts]
