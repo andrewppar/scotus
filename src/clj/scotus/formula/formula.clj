@@ -21,7 +21,7 @@
   (first formula))
 
 (defn args [formula]
-  (rest formula))
+  (into [] (rest formula)))
 
 (defn operator-type
   [operator]
@@ -114,6 +114,40 @@
 (defaccessor predicate [atomic-formula] :atomic
   (main-operator atomic-formula))
 
+(defmulti maybe-nested-args
+  {:arglists '([formula])}
+  (fn [formula]
+    (predicate formula)))
+
+(defmethod maybe-nested-args :default
+  [formula]
+  (args formula))
+
+(defmethod maybe-nested-args "asserted"
+  [formula]
+  (-> formula second args))
+
+(defmethod maybe-nested-args "unknown"
+  [formula]
+  (-> formula second args))
+
+(defmulti maybe-nested-predicate
+  {:arglists '([formula])}
+  (fn [formula]
+    (predicate formula)))
+
+(defmethod maybe-nested-predicate :default
+  [formula]
+  (predicate formula))
+
+(defmethod maybe-nested-predicate "asserted"
+  [formula]
+  (-> formula second predicate))
+
+(defmethod maybe-nested-predicate "unknown"
+  [formula]
+  (-> formula second predicate))
+
 (defn arg [atomic-formula argnum]
   (get atomic-formula argnum))
 
@@ -132,6 +166,14 @@
                    (args atomic-formula))})
 
 (def-formula-predicate atomic? :atomic)
+
+(defn ground?
+  [formula]
+  (and
+   (atomic? formula)
+   (every?
+    (fn [arg] (not (variable? arg)))
+    (args formula))))
 
 ;; negation
 

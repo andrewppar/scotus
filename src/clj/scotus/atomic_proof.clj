@@ -2,9 +2,10 @@
   (:require
    [clojure.set               :as set]
    [clojure.walk              :as walk]
-   [scotus.database           :as db]
+   [scotus.database.query     :as dbq]
    [scotus.formula.formula    :as formula]
    [scotus.transitive         :as transitive]
+   [scotus.time               :as time]
    [scotus.state              :as state]))
 
 (defn expand-args
@@ -26,7 +27,7 @@
 
 (defn lookup [predicate formulas contexts negated?]
   (let [row-specs (mapv args->row-spec formulas)]
-    (db/lookup-rows predicate contexts negated? row-specs)))
+    (dbq/lookup-rows predicate contexts negated? row-specs)))
 
 (defn variable-arg? [formula arg-name]
   (let [[pred & args] formula]
@@ -50,7 +51,7 @@
 
 (defn transitive-predicate-map [predicate contexts]
   (->> [[predicate nil nil nil nil]]
-       (db/lookup-rows "transitive_arg" contexts false)
+       (dbq/lookup-rows "transitive_arg" contexts false)
        (map
         (fn [result]
           (reduce-kv
@@ -102,7 +103,7 @@
                        (expand-args predicate args new-args arg))
                      formulas))))
         [])
-       (db/lookup-rows predicate contexts false)))
+       (dbq/lookup-rows predicate contexts false)))
 
 (defn transitive-lookup
   [predicate formulas results contexts {:keys [arg] :as transitive-map}]
@@ -170,7 +171,7 @@
 (defn get-predicate-types [predicate contexts]
   (map
    (fn [row] (get row :instance/class))
-   (db/lookup-rows "instance" contexts false [[predicate nil]])))
+   (dbq/lookup-rows "instance" contexts false [[predicate nil]])))
 
 (defn substitute-bindings
   [formula  bindings]
@@ -205,16 +206,6 @@
         new-formulas (map (fn [formula] (formula/arg formula 1)) formulas)]
     (lookup predicate new-formulas contexts false)))
 
-(defn fully-bound?
-  ;;TODO: Move this to the formula ns when it gets used
-  ;; more than once.
-  [formula]
-  (and
-   (formula/atomic? formula)
-   (every?
-    (fn [arg] (not (formula/variable? arg)))
-    (formula/args formula))))
-
 (defn db-response->formula
   [db-response]
   (let [predicate (-> db-response keys first namespace)
@@ -228,16 +219,29 @@
 (defmethod prove-formulas "unknown"
   [formulas _ contexts]
   (let [subformulas (map (fn [form] (formula/arg form 1)) formulas)]
-    (when-not (every? fully-bound? subformulas)
+    (when-not (every? formula/ground? subformulas)
       (throw
        (ex-info "Attempted to prove \"unknown\" with unbound vars."
                 {:caused-by formulas})))
+    ;; TODO: Do we want to do this by assertions only or also by proof?
     (let [asserted-subforms (map (fn [form] ["asserted" form]) subformulas)
           asserted-formulas (->> (prove-formulas
                                   asserted-subforms "asserted" contexts)
                                  (map db-response->formula)
                                  set)]
       (set/difference (set subformulas) asserted-formulas))))
+
+(defmethod prove-formulas "earlier"
+  [formulas _ _]
+  (when-not (every? formula/ground? formulas)
+      (throw
+       (ex-info "Attempted to prove \"earlier\" with unbound vars."
+                {:caused-by formulas})))
+  (map (fn [[_ earlier later]]
+         #_(time/earlier? earlier later))
+
+       formulas))
+
 
 (defn results->bindings
   [results predicate formula]
@@ -299,7 +303,8 @@
         (results->bindings predicate negatum)
         (join-bindings bindings))))
 
-(defn proof [formula bindings contexts]
+(defn proof [formula bindings contexts &
+             {:keys [justification?] :or {justification? false}}]
   (if (formula/negation? formula)
-    (prove-negation formula bindings contexts)
-    (prove-atom formula bindings contexts)))
+    (prove-negation formula bindings contexts #_justification?)
+    (prove-atom formula bindings contexts #_justification?)))

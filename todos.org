@@ -1,3 +1,10 @@
-* TODO Give some feedback when assertions go wrong
+* TODO support =disjoint= in wtf
+* DONE Give some feedback when assertions go wrong
+CLOSED: [2023-05-14 Sun 16:33]
 * DONE Make a way to retract statements
 CLOSED: [2023-05-01 Mon 20:32]
+* TODO Make a reference to a formula canonicalize to a reference to an assertion id if the arg_instance is of type "assertion"
+* TODO Rules
+* TODO NLP
+* TODO Support dates
+* TODO wtf should not be able to assert [instance X predicate] statements

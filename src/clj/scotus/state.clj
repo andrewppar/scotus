@@ -22,6 +22,17 @@
        (sort-by :columns/ordinal_position)
        (map :columns/column_name)))
 
+(defn set-table-column-type
+  [all-table-info table]
+  (->> all-table-info
+       (filter
+        (fn [{:columns/keys [table_name]}]
+          (= table_name table)))
+       (reduce
+        (fn [result {:columns/keys [column_name data_type]}]
+          (assoc result column_name data_type))
+        {})))
+
 (defn set-table-count
   [table db-connection]
   (-> (h/select [[:count :*]])
@@ -37,6 +48,7 @@
         raw-results (-> (h/select-distinct
                          :table-name
                          :table-schema
+                         :data_type
                          :column-name
                          :ordinal-position)
                         (h/from :information-schema/columns)
@@ -53,7 +65,9 @@
            (assoc-in [table :args]
                      (set-table-args raw-results table))
            (assoc-in [table :count]
-                     (set-table-count table db-connection))))
+                     (set-table-count table db-connection))
+           (assoc-in [table :column-types]
+                     (set-table-column-type raw-results table))))
      {}
      tables)))
 
@@ -114,6 +128,16 @@
 
 (defn predicate-index  []
   (get @state :index/predicate))
+
+(defn table-arg-types [table]
+  (get-in (predicate-index) [table :column-types]))
+
+
+(defmacro with-refreshed-index [& body]
+  {:style/indent 1}
+  `(let [result# (do ~@body)]
+     (refresh-index!)
+     result#))
 
 (comment
   (init!)

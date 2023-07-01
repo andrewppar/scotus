@@ -1,27 +1,26 @@
 (ns scotus.core
   (:require
-   [scotus.config           :as cfg]
-   [scotus.formula.formula  :as f]
-   [scotus.query            :as query]
-   [scotus.setup            :as setup]
-   [scotus.state            :as state]
-   [scotus.transact         :as transact]))
+   [scotus.config              :as cfg]
+   [scotus.database.assert-map :as am]
+   [scotus.formula.formula     :as f]
+   [scotus.query               :as query]
+   [scotus.setup               :as setup]
+   [scotus.state               :as state]
+   [scotus.transact            :as transact]))
 
 (defn init!
   "Initialize all configuration and state for scotus to run."
   []
   (cfg/init!)
   (state/init!)
-  (if-not (setup/setup?)
-    (setup/setup!)
-    :done))
+  (cond-> {:assert-count 0}
+    (not (setup/setup?)) (am/merge-assert-maps (setup/setup!))))
 
 (comment :someday
 (map (fn [[predicate args]]
-         (f/make-predicate predicate args))
+       (f/make-predicate predicate args))
      (state/predicate-index))
 )
-
 
 ;; knowledge management
 
@@ -75,6 +74,14 @@
   [predicate & {:keys [asserter args]}]
   [asserter args]
   (transact/create-predicate! predicate args asserter))
+
+(defn-api delete-predicate!
+  "Delete `predicate` from sctous.
+
+  - `predicate` is the predicate to be removed."
+  [predicate]
+  []
+  (transact/delete-predicate! predicate))
 
 (defn-api query
   "Run a query."
