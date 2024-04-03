@@ -1,0 +1,1 @@
+(ns scotus.semantic.deny)

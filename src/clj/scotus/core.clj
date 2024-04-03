@@ -1,26 +1,18 @@
 (ns scotus.core
   (:require
-   [scotus.config              :as cfg]
-   [scotus.database.assert-map :as am]
-   [scotus.formula.formula     :as f]
-   [scotus.query               :as query]
-   [scotus.setup               :as setup]
-   [scotus.state               :as state]
-   [scotus.transact            :as transact]))
+   [scotus.config :as cfg]
+   [scotus.setup :as setup]
+   [scotus.state :as state]))
 
 (defn init!
   "Initialize all configuration and state for scotus to run."
   []
   (cfg/init!)
   (state/init!)
-  (cond-> {:assert-count 0}
-    (not (setup/setup?)) (am/merge-assert-maps (setup/setup!))))
+  (when-not (setup/setup?)
+    (setup/setup!)))
 
-(comment :someday
-(map (fn [[predicate args]]
-       (f/make-predicate predicate args))
-     (state/predicate-index))
-)
+
 
 ;; knowledge management
 
@@ -54,6 +46,7 @@
          (do ~@required-fns)
          (do ~@body)))))
 
+#_
 (defn-api assert!
   "Assert `formula`.
 
@@ -65,6 +58,7 @@
   (transact/assert! formula asserter context))
 
 ;; Maybe asserter should be from a login value or a config value.
+#_
 (defn-api create-predicate!
   "Create a new predicate.
 
@@ -75,6 +69,7 @@
   [asserter args]
   (transact/create-predicate! predicate args asserter))
 
+#_
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.
 
@@ -83,12 +78,14 @@
   []
   (transact/delete-predicate! predicate))
 
+#_
 (defn-api query
   "Run a query."
   [formula & {:keys [context] :or {context "universal"}}]
   []
   (query/query formula context))
 
+#_
 (defn-api retract!
   "Remove an assertion.
 
@@ -106,3 +103,13 @@
                        (fn [result]
                          (get result 'scotus.core/?context))))]
   (transact/retract! formula contexts)))
+
+
+(comment
+  (init!)
+
+  (state/tables)
+
+
+
+  )

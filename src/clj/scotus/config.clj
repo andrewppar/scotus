@@ -19,7 +19,7 @@
                    :type :string
                    :required true
                    :default "postgres"}
-         :port {:desccription
+         :port {:description
                    "The port to use when accessing the database."
                    :type :number
                    :required true
@@ -35,6 +35,13 @@
   "Get an item from the configuration."
   [& args]
   (apply cfg/get args))
+
+(defn set-item
+  "Set a configuration item to a different value"
+  [ks value]
+  (cfg/set ks value))
+
+
 
 (comment
   (init!)

@@ -6,11 +6,6 @@
    [honey.sql.helpers :as h]
    [scotus.config  :as cfg]))
 
-(defmacro dpf [form]
-  `(let [result# ,form]
-     (println (format "%s => %s" ',form result#))
-     result#))
-
 (def state (atom nil))
 
 (defn set-table-args
