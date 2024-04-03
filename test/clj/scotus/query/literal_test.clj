@@ -212,7 +212,7 @@
                                "universal" true))))
 
 
-(deftest query
+(deftest ^:integration query
   (dbr/drop-table! "has_disease")
   (dba/create-table! "has_disease" "patient" "disease")
   (assert/! [:and

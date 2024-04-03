@@ -1,6 +1,96 @@
 let
   nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-23.11" ;
-  pkgs = import nixpkgs { config= {} ; overlays = [ ]; };
+  pkgs = import nixpkgs { config= {} ; overlays = [ ]; } ;
+
+  test-all = ''
+   function test-all () {
+     db-start ;
+     time clj -M:dev/test -m kaocha.runner ;
+   }
+  '' ;
+
+  test-integration = ''
+    function test-integration () {
+      db-start ;
+      time clj -M:dev/test -m kaocha.runner --focus-meta :integration ;
+
+    }
+   '' ;
+
+  run = ''
+   function run () {
+     pg_ctl -D $DB_LOC -U postgres -l logfile start
+     clj -M:dev/repl
+   }
+  '' ;
+
+  stop = ''
+    function stop () {
+     while true ; do
+       read -p  "tear down scotus services? (y/n) " reply
+       case $reply in
+         [yY] )  echo "stopping scotus services"
+                pg_ctl -D $DB_LOC -U postgres -l logfile stop
+                echo "good bye"
+                exit ;;
+         * ) echo " good bye"
+              exit ;;
+       esac
+     done
+    }
+  '' ;
+
+  functions =
+    test-all
+    + test-integration
+    + run
+    + stop ;
+
+  alias = {name, command}: "alias " + name + ''="'' + command + ''" ;'' ;
+
+  pgcli-local = alias {
+    name = "pgcli-local";
+    command = "pgcli postgresql://postgres:postgres@localhost:5432/kb" ;
+  } ;
+
+  test = alias {
+    name = "test" ;
+    command = "time clj -M:dev/test -m kaocha.runner --skip-meta :integration" ;
+  } ;
+
+  db-init = alias {
+    name = "db-init" ;
+    command = "initdb -D $DB_LOC -U postgres" ;
+  };
+
+  db-create = alias {
+    name = "db-create" ;
+    command = "createdb -U postgres kb";
+  } ;
+
+  db-start = alias {
+    name = "db-start" ;
+    command = "pg_ctl -D $DB_LOC -U postgres -l logfile start" ;
+  } ;
+
+  db-stop = alias {
+    name = "db-stop" ;
+    command = "pg_ctl -D $DB_LOC -U postgres -l logfile stop" ;
+  };
+
+  db-status = alias {
+    name = "db-status" ;
+    command = "pg_ctl -D $DB_LOC status" ;
+  };
+
+  aliases =
+    pgcli-local
+    + test
+    + db-init
+    + db-create
+    + db-start
+    + db-stop
+    + db-status ;
 in
 pkgs.mkShell {
   packages = with pkgs; [
@@ -15,33 +105,8 @@ pkgs.mkShell {
   DB__HOST="localhost";
   DB__USER="postgres";
   DB__PORT="5432";
-  shellHook = ''
-    function run () {
-       pg_ctl -D $DB_LOC -U postgres -l logfile start
-       clj -M:dev/repl
-    }
-    function stop () {
-       while true ; do
-         read -p  "tear down scotus services? (y/n) " reply
-         case $reply in
-           [yY] )  echo "stopping scotus services"
-                  pg_ctl -D $DB_LOC -U postgres -l logfile stop
-                  echo "good bye"
-                  exit ;;
-           * ) echo " good bye"
-                exit ;;
-         esac
-       done
-    }
-    alias pgcli_local="pgcli postgresql://postgres:postgres@localhost:5432/kb"
-    alias test="time clj -M:dev/test -m kaocha.runner --skip-meta :integration"
-    alias test_all="time clj -M:dev/test -m kaocha.runner"
-    alias test_integration="time clj -M:dev/test -m kaocha.runner --focus-meta :integration"
-    alias db_init="initdb -D $DB_LOC -U postgres"
-    alias db_create="createdb -U postgres kb"
-    alias db_start="pg_ctl -D $DB_LOC -U postgres -l logfile start"
-    alias db_stop="pg_ctl -D $DB_LOC -U postgres -l logfile stop"
-    alias db_status="pg_ctl -D $DB_LOC status"
-    trap stop EXIT
-'' ;
+  shellHook =
+    functions
+    + aliases
+    + ''trap stop EXIT '' ;
 }

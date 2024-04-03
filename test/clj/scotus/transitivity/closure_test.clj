@@ -24,7 +24,7 @@
              (cl/one-step
               ["chihuahua" "persian"] "subclass_of" "subclass" "superclass" "universal"))))))
 
-(deftest t-closure-loops
+(deftest ^:integration t-closure-loops
   (testing "small loop"
     (let [hierarchy ["subclass_of" "chihuahua" "chihuahua"]]
       (assert/! hierarchy :asserter "anparisi")
@@ -46,7 +46,7 @@
                 {:subclass_of/subclass "retriever" :subclass_of/superclass "dog"}]}
              (cl/closure ["retriever"] "subclass_of" "subclass" "superclass"))))))
 
-(deftest t-closure-splits
+(deftest ^:integration t-closure-splits
   (testing "simple split"
     (let [hierarchy [:and
                      ["subclass_of" "amphibious vehicle" "water transport"]
@@ -59,7 +59,7 @@
                 {:subclass_of/subclass "amphibious vehicle" :subclass_of/superclass "land transport"}]}
              (cl/closure ["duckboat"] "subclass_of" "subclass" "superclass"))))))
 
-(deftest t-closure-merge
+(deftest ^:integration t-closure-merge
   (testing "simple merge"
     (let [hierarchy [:and
                      ["subclass_of" "retriever" "dog"]
@@ -73,7 +73,7 @@
                 {:subclass_of/subclass "cat" :subclass_of/superclass "mammal"}]}
              (cl/closure ["retriever" "persian"] "subclass_of" "subclass" "superclass"))))))
 
-(deftest t-downward-closure
+(deftest ^:integration t-downward-closure
   (testing "downward closure"
     (let [hierarchy [:and
                      ["subclass_of" "retriever" "dog"]
