@@ -81,10 +81,10 @@
                                false)))
   (is (= '#{{?x "anparisi"
              :justification
-             [["pet_type" "anparisi" "golden_retriever"]
-              ["subclass_of" "mammal" "animal"]
-              ["subclass_of" "dog" "mammal"]
-              ["subclass_of" "golden_retriever" "dog"]]}}
+             #{["pet_type" "anparisi" "golden_retriever"]
+               ["subclass_of" "mammal" "animal"]
+               ["subclass_of" "dog" "mammal"]
+               ["subclass_of" "golden_retriever" "dog"]}}}
          (literal/transitivity '[]
                                '["pet_type" ?x "animal"]
                                '[{:transitive_arg/predicate "pet_type"
@@ -106,10 +106,10 @@
                                false)))
   (is (= '#{{?x "anparisi" ?y "animal"
              :justification
-             [["pet_type" "anparisi" "golden_retriever"]
-              ["subclass_of" "mammal" "animal"]
-              ["subclass_of" "dog" "mammal"]
-              ["subclass_of" "golden_retriever" "dog"]]}}
+             #{["pet_type" "anparisi" "golden_retriever"]
+               ["subclass_of" "mammal" "animal"]
+               ["subclass_of" "dog" "mammal"]
+               ["subclass_of" "golden_retriever" "dog"]}}}
          (literal/transitivity '[{?y "animal"}]
                                '["pet_type" ?x ?y]
                                '[{:transitive_arg/predicate "pet_type"
