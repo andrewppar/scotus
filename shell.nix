@@ -4,16 +4,15 @@ let
 
   test-all = ''
    function test-all () {
-     db-start ;
+     pg_ctl -D $DB_LOC -U postgres -l logfile start ;
      time clj -M:dev/test -m kaocha.runner ;
    }
   '' ;
 
   test-integration = ''
     function test-integration () {
-      db-start ;
+      pg_ctl -D $DB_LOC -U postgres -l logfile start ;
       time clj -M:dev/test -m kaocha.runner --focus-meta :integration ;
-
     }
    '' ;
 

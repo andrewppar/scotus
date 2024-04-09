@@ -1,6 +1,7 @@
-(ns scotus.query.canonicalize
-  (:require [scotus.formula.formula :as formula]
-            [scotus.state           :as state]))
+(ns scotus.query.canon
+  (:require [scotus.syntax.formula :as formula]
+            [scotus.syntax.canon :as canon]
+            [scotus.state :as state]))
 
 (defn sort-formulas-by
   "Group formulas successively into sub-groups and sort those
@@ -28,3 +29,6 @@
     ;;; We should prioritize restricting search space with smaller tables
     [(comp state/table-count formula/predicate) <]]
    conjuncts))
+
+(defn dnf [formula]
+  (canon/enact formula :query))

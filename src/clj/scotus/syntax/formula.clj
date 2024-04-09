@@ -193,3 +193,33 @@
                         (antecedent formula-two))
                  (same? (consequent formula-one)
                         (consequent formula-two))))))
+
+(defn gather [formula gather-fn]
+  (cond
+    (atom? formula)
+    (filter gather-fn formula)
+
+    (negation? formula)
+    (into (gather-fn formula) (gather (negatum formula) gather-fn))
+
+    (or (conjunction? formula)
+        (disjunction? formula))
+    (into (gather-fn formula)
+          (map (fn [subformula]
+                 (gather subformula gather-fn))
+               (args formula)))
+
+    (implication? formula)
+    (into (gather-fn formula)
+          (into (gather (antecedent formula) gather-fn)
+                (gather (consequent formula) gather-fn)))
+
+    :else
+    (gather-fn formula)))
+
+
+(defn variables [formula]
+  (gather formula variable?))
+
+
+(variables '["subclass_of" ?x ?y])

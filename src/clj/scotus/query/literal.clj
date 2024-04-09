@@ -105,22 +105,27 @@
    db-result]
   (let [from-key (keyword transitive_pred from_arg)
         to-match (assert-spec/lookup db-result arg_name)]
-    (some
-     (fn [closure]
-       (when-let [justification (->> to-match
-                                     (cl/slice closure from-key)
-                                     (map assert-spec/->formula))]
-         (let [start-arg (assert-spec/lookup (first closure) to_arg)
-               arg-key (keyword (f/literal-predicate query) arg_name)
-               updated-db-spec (assoc db-result arg-key start-arg)
-               binding  (assert-spec/->binding query updated-db-spec)]
-           (if justification?
-             (assoc binding
-                    :justification
-                    (conj justification
-                          (assert-spec/->formula db-result)))
-             binding))))
-     closures)))
+    (or
+     (some
+      (fn [closure]
+        (when-let [justification (->> to-match
+                                      (cl/slice closure from-key)
+                                      (map assert-spec/->formula)
+                                      vec)]
+          (let [start-arg (assert-spec/lookup (first closure) to_arg)
+                arg-key (keyword (f/literal-predicate query) arg_name)
+                updated-db-spec (assoc db-result arg-key start-arg)
+                binding  (assert-spec/->binding query updated-db-spec)]
+            (if justification?
+              (assoc binding
+                     :justification
+                     (conj justification
+                           (assert-spec/->formula db-result)))
+              binding))))
+      closures)
+     (cond-> (assert-spec/->binding query db-result)
+       justification? (update :justification (fnil conj [])
+                              (assert-spec/->formula db-result))))))
 
 (defn transitive-down
   [bindings
@@ -138,19 +143,27 @@
                             closures)
         new-specs (reduce
                    (fn [result query-lit]
-                     (->> (lit/arg-get query-lit arg_name)
-                          (get query-arg->closure)
-                          ;; transduce or a single map?
-                          (mapcat (partial cl/map-arg from_arg))
-                          (map (partial lit/put query-lit arg_name))
-                          (map (comp args->spec f/literal-args))
-                          (into result)))
+                     (let [query-spec (args->spec (f/literal-args query-lit))]
+                       (conj (->> (lit/arg-get query-lit arg_name)
+                                  (get query-arg->closure)
+                                  ;; transduce or a single map?
+                                  (mapcat (partial cl/map-arg from_arg))
+                                  (map (partial lit/put query-lit arg_name))
+                                  (map (comp args->spec f/literal-args))
+                                  (into result))
+                             query-spec)))
                    #{}
                    queries)
         new-results (dbq/lookup-rows pred [context] false new-specs)]
-    (mapv
-     (partial binding-for-assert-spec query closures assert justification?)
-     new-results)))
+    (->> new-results
+         (mapv
+          (partial
+           binding-for-assert-spec query closures assert justification?))
+         (binding/extend-all-with-all bindings)
+         (map (fn [binding]
+                (if (get binding :justification)
+                  (update binding :justification set)
+                  binding))))))
 
 (defn transitivity
   [bindings query transitive-asserts context justification?]

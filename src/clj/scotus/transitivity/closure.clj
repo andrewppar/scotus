@@ -2,25 +2,21 @@
   (:require [scotus.database.query :as dbq]
             [scotus.state :as state]))
 
-(state/table-args "subclass_of")
-
 (defn ->row-specs [args from-pred-arg table-args]
   (let [replace-arg (fn [arg table-arg] (when (= table-arg from-pred-arg) arg))
         ->row-spec  (fn [arg] (map (partial replace-arg arg) table-args))]
     (map ->row-spec args)))
 
 (defn one-step [args predicate from-pred-arg to-pred-arg context]
-  (let [to-pred-key (keyword predicate to-pred-arg)
-        from-pred-key (keyword predicate from-pred-arg)]
-    (->> predicate
-         state/table-args
-         (->row-specs args from-pred-arg)
-         (dbq/lookup-rows predicate [context] false)
-         (reduce (fn [acc assertion] (update acc
-                                            (get assertion (keyword predicate from-pred-arg))
-                                            (fnil conj #{})
-                                            assertion))
-                 {}))))
+  (->> predicate
+       state/table-args
+       (->row-specs args from-pred-arg)
+       (dbq/lookup-rows predicate [context] false)
+       (reduce (fn [acc assertion] (update acc
+                                          (get assertion (keyword predicate from-pred-arg))
+                                          (fnil conj #{})
+                                          assertion))
+               {})))
 
 (defn closure
   "Build a set of paths whose roots are `start-args` that represent

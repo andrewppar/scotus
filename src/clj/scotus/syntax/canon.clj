@@ -5,6 +5,6 @@
 (def purposes #{:query :assert})
 
 (defn enact [formula purpose]
-  (let [normal-form (case purpose
-                      :assert (xnf/cnf formula)
-                      :query (xnf/dnf formula))]))
+  (case purpose
+    :assert (xnf/cnf formula)
+    :query (xnf/dnf formula)))
