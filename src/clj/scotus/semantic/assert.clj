@@ -48,3 +48,7 @@
                  (update acc :assert-count (fnil + 0) assert-count)))
              atom-asserts
              negations-by-predicate)))))
+
+(defn predicate!
+  [predicate & {:keys [args]}]
+  (apply add/create-table! predicate args))

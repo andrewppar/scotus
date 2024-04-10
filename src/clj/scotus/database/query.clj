@@ -47,7 +47,9 @@
     (if (not (every? empty-spec? row-specs))
       (-> query-start
           (h/where (row-specs->where-body
-                    (assoc options :columns table-columns)
+                    (-> options
+                        (assoc :columns table-columns)
+                        (update :contexts (fnil conj #{}) "universal"))
                     row-specs))
           utils/execute!)
       (utils/execute! query-start))))

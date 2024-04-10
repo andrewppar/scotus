@@ -11,14 +11,14 @@ let
 
   test-integration = ''
     function test-integration () {
-      pg_ctl -D $DB_LOC -U postgres -l logfile start ;
+      pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start ;
       time clj -M:dev/test -m kaocha.runner --focus-meta :integration ;
     }
    '' ;
 
   run = ''
    function run () {
-     pg_ctl -D $DB_LOC -U postgres -l logfile start
+     pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start
      clj -M:dev/repl
    }
   '' ;
@@ -39,17 +39,24 @@ let
     }
   '' ;
 
+  db-start = ''
+    function db-start () {
+        pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start ;
+    }
+  '' ;
+
   functions =
-    test-all
-    + test-integration
+    db-start
     + run
-    + stop ;
+    + stop
+    + test-all
+    + test-integration ;
 
   alias = {name, command}: "alias " + name + ''="'' + command + ''" ;'' ;
 
-  pgcli-local = alias {
-    name = "pgcli-local";
-    command = "pgcli postgresql://postgres:postgres@localhost:5432/kb" ;
+  psql-local = alias {
+    name = "psql-local";
+    command = "psql postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
   } ;
 
   test = alias {
@@ -64,12 +71,7 @@ let
 
   db-create = alias {
     name = "db-create" ;
-    command = "createdb -U postgres kb";
-  } ;
-
-  db-start = alias {
-    name = "db-start" ;
-    command = "pg_ctl -D $DB_LOC -U postgres -l logfile start" ;
+    command = "createdb -p $DB__PORT -U postgres kb";
   } ;
 
   db-stop = alias {
@@ -83,18 +85,16 @@ let
   };
 
   aliases =
-    pgcli-local
+    psql-local
     + test
     + db-init
     + db-create
-    + db-start
     + db-stop
     + db-status ;
 in
 pkgs.mkShell {
   packages = with pkgs; [
     clojure
-    pgcli
     postgresql
     less
   ] ;
@@ -103,7 +103,7 @@ pkgs.mkShell {
   DB__NAME="kb";
   DB__HOST="localhost";
   DB__USER="postgres";
-  DB__PORT="5432";
+  DB__PORT="5431";
   shellHook =
     functions
     + aliases

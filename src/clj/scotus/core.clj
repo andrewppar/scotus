@@ -2,7 +2,9 @@
   (:require
    [scotus.config :as cfg]
    [scotus.setup :as setup]
-   [scotus.state :as state]))
+   [scotus.state :as state]
+   [scotus.query.query :as query]
+   [scotus.semantic.assert :as assert]))
 
 (defn init!
   "Initialize all configuration and state for scotus to run."
@@ -46,7 +48,7 @@
          (do ~@required-fns)
          (do ~@body)))))
 
-#_
+
 (defn-api assert!
   "Assert `formula`.
 
@@ -55,19 +57,19 @@
                the context is \"universal\"."
   [formula & {:keys [asserter context] :or {context "universal"}}]
   [asserter]
-  (transact/assert! formula asserter context))
+  (assert/! formula :asserter asserter :context context))
 
 ;; Maybe asserter should be from a login value or a config value.
-#_
+
 (defn-api create-predicate!
   "Create a new predicate.
 
   - `args` is a required keyword argument that names the arguments for
            the newly created predicate.
   - `asserter` is a required keyword argument."
-  [predicate & {:keys [asserter args]}]
-  [asserter args]
-  (transact/create-predicate! predicate args asserter))
+  [predicate & {:keys [args]}]
+  [args]
+  (assert/predicate! predicate args))
 
 #_
 (defn-api delete-predicate!
@@ -78,14 +80,16 @@
   []
   (transact/delete-predicate! predicate))
 
-#_
+
 (defn-api query
   "Run a query."
-  [formula & {:keys [context] :or {context "universal"}}]
+  [formula &
+   {:keys [context justification?]
+    :or {context "universal" justification? false}}]
   []
-  (query/query formula context))
+  (query/query formula :context context :justification? justification?))
 
-#_
+#_,
 (defn-api retract!
   "Remove an assertion.
 
@@ -107,9 +111,4 @@
 
 (comment
   (init!)
-
-  (state/tables)
-
-
-
-  )
+  (state/tables))
