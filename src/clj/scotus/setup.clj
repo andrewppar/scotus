@@ -77,7 +77,7 @@
         vals (try (reduce-kv
                    (fn [results pred specs]
                      (concat
-                      (dbq/lookup-rows pred :universal false specs)
+                      (dbq/lookup-rows pred ["universal"] false specs)
                       results))
                    []
                    required-positive-rows)

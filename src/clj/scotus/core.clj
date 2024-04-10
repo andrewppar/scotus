@@ -4,7 +4,8 @@
    [scotus.setup :as setup]
    [scotus.state :as state]
    [scotus.query.query :as query]
-   [scotus.semantic.assert :as assert]))
+   [scotus.semantic.assert :as assert]
+   [scotus.semantic.retract :as retract]))
 
 (defn init!
   "Initialize all configuration and state for scotus to run."
@@ -13,8 +14,6 @@
   (state/init!)
   (when-not (setup/setup?)
     (setup/setup!)))
-
-
 
 ;; knowledge management
 
@@ -71,14 +70,13 @@
   [args]
   (assert/predicate! predicate args))
 
-#_
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.
 
   - `predicate` is the predicate to be removed."
   [predicate]
   []
-  (transact/delete-predicate! predicate))
+  (retract/delete-predicate! predicate))
 
 
 (defn-api query
@@ -89,7 +87,6 @@
   []
   (query/query formula :context context :justification? justification?))
 
-#_,
 (defn-api retract!
   "Remove an assertion.
 
@@ -100,13 +97,17 @@
   ;; context
   [formula & {:keys [context] :or {context "universal"}}]
   []
-  (let [contexts (->> "universal"
+  ;; This is cool but it belongs in a layer between most operations
+  ;; not just here and not this high up.
+  #_(let [contexts (->> "universal"
                       (query/query
                        `["subcontext_of" ~context ?context])
                       (map
                        (fn [result]
                          (get result 'scotus.core/?context))))]
-  (transact/retract! formula contexts)))
+      )
+  (retract/! formula context))
+
 
 
 (comment
