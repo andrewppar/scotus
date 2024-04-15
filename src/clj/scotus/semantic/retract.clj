@@ -4,7 +4,7 @@
    [scotus.syntax.canon :as canon]
    [scotus.syntax.formula :as f]))
 
-(defn delete-predicate!
+(defn predicate!
   [predicate]
   (dbr/drop-table! predicate))
 

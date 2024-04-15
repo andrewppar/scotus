@@ -22,19 +22,3 @@
     (is (f/same? [:and [:or p q] r t] [:and r [:or q p] t]))
     (is (f/same? [:and p] [:and p p]))
     (is (not (f/same? [:and p q] [:and p r])))))
-
-;; I don't know what this is for
-#_(deftest t-signature
-  (is (= (f/signature
-          '["subclass_of" ?x "dog"])
-         {:predicate "subclass_of"
-          :arg-signature
-          '[?x nil]}))
-  (is (= (f/signature '["subclass_of" ?x ?y])
-         {:predicate "subclass_of"
-          :arg-signature
-          '[?x ?y]}))
-  (is (= (f/signature '["subclass_of" "dog" "mammal"])
-         {:predicate "subclass_of"
-          :arg-signature
-          [nil nil]})))

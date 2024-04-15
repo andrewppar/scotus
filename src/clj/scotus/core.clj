@@ -76,7 +76,7 @@
   - `predicate` is the predicate to be removed."
   [predicate]
   []
-  (retract/delete-predicate! predicate))
+  (retract/predicate! predicate))
 
 
 (defn-api query

@@ -4,7 +4,7 @@
    [scotus.query.assert-spec :as assert-spec]
    [scotus.query.binding :as binding]
    [scotus.semantic.literal :as lit]
-   [scotus.state :as state]
+   [scotus.semantic.resolution :as r]
    [scotus.syntax.formula :as f]
    [scotus.transitivity.closure :as cl]))
 
@@ -29,7 +29,7 @@
         formulas  (binding/formula-apply-all subformula bindings)
         specs (map (comp args->spec f/args) formulas)
         pred (f/predicate subformula)]
-    (->> (dbq/lookup-rows pred [context] negated? specs)
+    (->> (dbq/lookup-rows pred (r/->context context) negated? specs)
          (map
           (fn[assert]
             (assert-spec/->binding
@@ -78,7 +78,7 @@
         db-results (->> bindings
                         (binding/formula-apply-all query)
                         (map (comp args->spec f/literal-args))
-                        (dbq/lookup-rows pred [context] false))
+                        (dbq/lookup-rows pred (r/->context context) false))
         start-args (map
                     (fn [spec] (assert-spec/lookup spec arg_name))
                     db-results)
@@ -154,7 +154,7 @@
                              query-spec)))
                    #{}
                    queries)
-        new-results (dbq/lookup-rows pred [context] false new-specs)]
+        new-results (dbq/lookup-rows pred (r/->context context) false new-specs)]
     (->> new-results
          (mapv
           (partial

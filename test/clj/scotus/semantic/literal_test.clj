@@ -1,8 +1,11 @@
 (ns scotus.semantic.literal-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [scotus.database.test-utils :refer [each-fixture once-fixture]]
+   [scotus.semantic.assert :as assert]
+   [scotus.database.query :as dbq]
    [scotus.semantic.literal :as literal]
-   [scotus.database.test-utils :refer [each-fixture once-fixture]]))
+   [scotus.semantic.retract :as retract]))
 
 (use-fixtures :each each-fixture)
 (use-fixtures :once once-fixture)

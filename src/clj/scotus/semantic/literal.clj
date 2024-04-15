@@ -1,7 +1,7 @@
 (ns scotus.semantic.literal
   (:require
-   [scotus.syntax.formula :as f]
-   [scotus.state :as state]))
+   [scotus.state :as state]
+   [scotus.syntax.formula :as f]))
 
 (defn ->map [literal]
   (let [pred (f/literal-predicate literal)

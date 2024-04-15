@@ -70,18 +70,16 @@
   [assertion-id]
   (let [table (-> (h/select :predicate)
                   (h/from :assertion_predicate_lookup)
-                  (h/where [:= assertion-id :id])
-                  sql/format
+                  (h/where [:= [:cast assertion-id :uuid] :id])
                   utils/execute!
                   first
                   (get :assertion_predicate_lookup/predicate)
-                  keyword
-                  )]
+                  keyword)]
     (-> (h/select :*)
         (h/from table)
-        (h/where [:= :id assertion-id])
-        sql/format
-        utils/execute!)))
+        (h/where [:= :id [:cast assertion-id :uuid]])
+        utils/execute!
+        first)))
 
 (defn lookup-for-all-preds
   [contexts negated? row-specs & {:keys [include-meta?] :or
