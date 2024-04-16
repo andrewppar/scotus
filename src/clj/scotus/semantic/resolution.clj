@@ -9,11 +9,7 @@
 (defn ->context
   "Resolve a `context` into all its subcontexts."
   [context]
-  (conj
-   (mapv
-    (fn [{:subcontext/keys [subcontext]}] subcontext)
-    (cl/closure [context] "subcontext_of" "supercontext" "subcontext"))
-   "universal"))
+  (cl/resolve-contexts context))
 
 ;; TODO We need a semantic lookup layer instead of dbq
 (defn <-literal

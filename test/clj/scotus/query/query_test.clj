@@ -5,17 +5,18 @@
    [scotus.database.remove :as dbr]
    [scotus.database.test-utils :refer [each-fixture once-fixture]]
    [scotus.query.query :as q]
-   [scotus.semantic.assert :as assert]))
+   [scotus.semantic.assert :as assert]
+   [scotus.semantic.retract :as retract]))
 
 
 (use-fixtures :each each-fixture)
 (use-fixtures :once once-fixture)
 
 (deftest t-query
-  (dbr/drop-table! "has_disease")
-  (dbr/drop-table! "label")
-  (dba/create-table! "has_disease" "patient" "disease")
-  (dba/create-table! "label" "thing" "english")
+  (retract/predicate! "has_disease")
+  (retract/predicate! "label")
+  (assert/predicate! "has_disease" :args ["patient" "disease"])
+  (assert/predicate! "label" :args ["thing" "english"])
   (assert/!
    [:and
     ["transitive_arg"
@@ -98,3 +99,27 @@
                        ["label" ?disease "Cancer"]
                        ["label" ?disease "Heart Disease"]]]
                     :justification? true)))))
+
+(deftest t-query-contexts
+  (retract/predicate! "has_condition")
+  (assert/predicate! "has_condition" :args ["patient" "disease"])
+  (assert/! ["subclass_of" "heart disease" "disease"]
+            :asserter "anparisi" :context "health")
+  (assert/! ["subclass_of" "disease" "biological state"]
+            :asserter "anparisi" :context "biology")
+  (assert/! [:and
+             ["has_condition" "pat_01" "heart_disease"]
+             ["transitive_arg" "has_condition" "disease"
+              "subclass_of" "subclass" "superclass"]]
+            :asserter "anparisi" :context "hospital")
+  (assert/! [:and ["subcontext_of" "health" "hospital"]
+             ["subcontext_of" "biology" "health"]]
+            :asserter "anparisi")
+  (testing "Querying with contexts works"
+    (is (= '#{}
+           (q/query '["has_condition" "pat_01" ?condition] :context "health")))
+
+    (is (= '#{{?condition "heart disease"}
+              {?condition "disease"}
+              {?condition "biological state"}}
+           (q/query '["has_condition" "pat_01" ?condition] :context "hospital")))))

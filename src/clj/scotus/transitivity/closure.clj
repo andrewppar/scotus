@@ -7,16 +7,54 @@
         ->row-spec  (fn [arg] (map (partial replace-arg arg) table-args))]
     (map ->row-spec args)))
 
-(defn one-step [args predicate from-pred-arg to-pred-arg context]
+(defn one-step [args predicate from-pred-arg contexts]
   (->> predicate
        state/table-args
        (->row-specs args from-pred-arg)
-       (dbq/lookup-rows predicate [context] false)
+       (dbq/lookup-rows predicate contexts false)
        (reduce (fn [acc assertion] (update acc
                                           (get assertion (keyword predicate from-pred-arg))
                                           (fnil conj #{})
                                           assertion))
                {})))
+
+(defn ^:private closure-loop
+  [predicate start-args from-pred-arg to-pred-arg contexts]
+  (let [to-key (keyword predicate to-pred-arg)
+        init (->> (one-step start-args predicate from-pred-arg contexts)
+                  vals
+                  (reduce into #{}))]
+    (loop [paths init
+           seen #{}]
+      (let [next-nodes (reduce
+                        (fn [acc path]
+                          (let [node (last path)]
+                            (if (contains? seen node)
+                              acc
+                              (conj acc node))))
+                        #{}
+                        paths)]
+        (if (seq next-nodes)
+          (let [next-step (one-step next-nodes predicate from-pred-arg contexts)]
+            (if (seq next-step)
+              (recur
+               (set (reduce
+                     (fn [acc path]
+                       (if-let [new-ends (get next-step (get (last path) to-key))]
+                         (into acc (mapv (partial conj path) new-ends))
+                         (conj acc path)))
+                     #{}
+                     paths))
+               (into seen next-nodes))
+              paths))
+          paths)))))
+
+(defn resolve-contexts [context]
+  (conj
+   (closure-loop
+    "subcontext_of" [context] "supercontext" "subcontext" ["universal"])
+   "universal"))
+
 
 (defn closure
   "Build a set of paths whose roots are `start-args` that represent
@@ -24,31 +62,7 @@
   to `to-pred-arg`"
   [start-args predicate from-pred-arg to-pred-arg
    & {:keys [context] :or {context "universal"}}]
-  (let [to-keyword (keyword predicate to-pred-arg)]
-    (loop [paths  (mapcat (fn [asserts] (map (partial conj []) asserts))
-                          (vals
-                           (one-step start-args predicate from-pred-arg to-pred-arg context)))
-           seen #{}]
-      (let [next-nodes (->> paths
-                            (map last)
-                            (filter (complement (partial contains? seen)))
-                            set)]
-        (if (seq next-nodes)
-          (let [steps (one-step
-                       (map (fn [row] (get row to-keyword)) next-nodes)
-                       predicate from-pred-arg to-pred-arg context)]
-            (if (seq steps)
-              (let [new-paths (set
-                               (reduce (fn [acc path]
-                                         (if-let [new-ends (get steps (get (last path) to-keyword))]
-                                           (into acc (mapv (partial conj path) new-ends))
-                                           (conj acc path)))
-                                       #{}
-                                       paths))]
-                (recur new-paths
-                       (into seen next-nodes)))
-              paths))
-          paths)))))
+  (closure-loop predicate start-args from-pred-arg to-pred-arg (resolve-contexts context)))
 
 (defn slice-internal
   [closure start-key start-arg end-key end-arg no-start?]

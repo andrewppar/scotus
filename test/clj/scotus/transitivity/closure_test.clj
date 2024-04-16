@@ -21,8 +21,7 @@
               #{{:subclass_of/subclass "chihuahua" :subclass_of/superclass "dog"}}
               "persian"
               #{{:subclass_of/subclass "persian" :subclass_of/superclass "cat"}}}
-             (cl/one-step
-              ["chihuahua" "persian"] "subclass_of" "subclass" "superclass" "universal"))))))
+             (cl/one-step ["chihuahua" "persian"] "subclass_of" "subclass" ["universal"]))))))
 
 (deftest ^:integration t-closure-loops
   (testing "small loop"

@@ -74,6 +74,11 @@ let
     command = "createdb -p $DB__PORT -U postgres kb";
   } ;
 
+  db-test-create = alias {
+    name = "db-test-create" ;
+    command = "createdb -p $DB__PORT -U postgres kb-test";
+  } ;
+
   db-stop = alias {
     name = "db-stop" ;
     command = "pg_ctl -D $DB_LOC -U postgres -l logfile stop" ;
@@ -89,6 +94,7 @@ let
     + test
     + db-init
     + db-create
+    + db-test-create
     + db-stop
     + db-status ;
 in

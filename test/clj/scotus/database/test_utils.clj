@@ -6,6 +6,7 @@
 
 (defn once-fixture [f]
   (let [old-kb (config/get-item :db :name)]
+    (config/init!)
     (config/set-item [:db :name] "kb_test")
     (state/init!)
     (f)
