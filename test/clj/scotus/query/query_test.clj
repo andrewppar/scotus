@@ -103,9 +103,9 @@
 (deftest t-query-contexts
   (retract/predicate! "has_condition")
   (assert/predicate! "has_condition" :args ["patient" "disease"])
-  (assert/! ["subclass_of" "heart disease" "disease"]
+  (assert/! ["subclass_of" "heart_disease" "disease"]
             :asserter "anparisi" :context "health")
-  (assert/! ["subclass_of" "disease" "biological state"]
+  (assert/! ["subclass_of" "disease" "biological_state"]
             :asserter "anparisi" :context "biology")
   (assert/! [:and
              ["has_condition" "pat_01" "heart_disease"]
@@ -119,7 +119,7 @@
     (is (= '#{}
            (q/query '["has_condition" "pat_01" ?condition] :context "health")))
 
-    (is (= '#{{?condition "heart disease"}
+    (is (= '#{{?condition "heart_disease"}
               {?condition "disease"}
-              {?condition "biological state"}}
+              {?condition "biological_state"}}
            (q/query '["has_condition" "pat_01" ?condition] :context "hospital")))))

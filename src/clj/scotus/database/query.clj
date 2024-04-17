@@ -14,8 +14,11 @@
               row-spec columns)
       {:caused-by `(>= (count ~columns) (count ~row-spec))})))
   (let [base-conjunct (cond-> [:and]
-                        (not= contexts :universal) (conj [:in :context contexts])
-                        true (conj [:= :negative negated?]))]
+                        (not= contexts :universal)
+                        (conj [:in :context (vec contexts)])
+
+                        true
+                        (conj [:= :negative negated?]))]
     (->> row-spec
          (zipmap columns)
          (reduce-kv

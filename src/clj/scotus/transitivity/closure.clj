@@ -23,8 +23,11 @@
   (let [to-key (keyword predicate to-pred-arg)
         init (->> (one-step start-args predicate from-pred-arg contexts)
                   vals
-                  (reduce into #{}))]
-    (loop [paths init
+                  (reduce
+                   (fn [acc asserts]
+                     (into acc (map (partial conj []) asserts)))
+                   #{}))]
+  (loop [paths init
            seen #{}]
       (let [next-nodes (reduce
                         (fn [acc path]
@@ -35,7 +38,9 @@
                         #{}
                         paths)]
         (if (seq next-nodes)
-          (let [next-step (one-step next-nodes predicate from-pred-arg contexts)]
+          (let [next-step (one-step
+                           (map (fn [row] (get row to-key)) next-nodes)
+                           predicate from-pred-arg contexts)]
             (if (seq next-step)
               (recur
                (set (reduce
@@ -51,10 +56,17 @@
 
 (defn resolve-contexts [context]
   (conj
-   (closure-loop
-    "subcontext_of" [context] "supercontext" "subcontext" ["universal"])
+   (reduce
+    (fn [result path]
+      (into result
+            (map
+             (fn [{:subcontext_of/keys [subcontext]}] subcontext)
+             path)))
+    #{}
+    (closure-loop
+     "subcontext_of" [context] "supercontext" "subcontext" ["universal"]))
+   context
    "universal"))
-
 
 (defn closure
   "Build a set of paths whose roots are `start-args` that represent
