@@ -1,5 +1,6 @@
 (ns scotus.semantic.assert
   (:require
+   [scotus.heuristic.assert :as ha]
    [scotus.database.add :as add]
    [scotus.syntax.formula :as f]
    [scotus.syntax.xnf :as xnf]))
@@ -10,13 +11,13 @@
   ;; TODO: Not mistyped
   (let [cnf (xnf/cnf formula)]
     (cond (f/atom? cnf)
-          (add/add-rows-by-table
-           (f/predicate cnf) context asserter false [(f/args cnf)])
+          (ha/add-literals!
+           (f/predicate cnf) [(f/args cnf)] false context asserter)
 
           (f/negation? formula)
           (let [atom (f/negatum cnf)]
-            (add/add-rows-by-table
-             (f/predicate atom) context asserter true [(f/args atom)]))
+            (ha/add-literals!
+             (f/predicate atom) [(f/args atom)] true context asserter))
 
           :else
           (let [{literals true} (group-by f/literal? (f/args cnf))
@@ -28,23 +29,23 @@
                                         negations)
                 atom-asserts (reduce-kv
                               (fn [acc predicate atoms]
-                                (let [{:keys [assert-count]} (add/add-rows-by-table
+                                (let [{:keys [assert-count]} (ha/add-literals!
                                                               predicate
-                                                              context
-                                                              asserter
+                                                              (mapv f/args atoms)
                                                               false
-                                                              (mapv f/args atoms))]
+                                                              context
+                                                              asserter)]
                                   (update acc :assert-count (fnil + 0) assert-count)))
                               {}
                               atoms-by-predicate)]
             (reduce-kv
              (fn [acc predicate negations]
-               (let [{:keys [assert-count]} (add/add-rows-by-table
+               (let [{:keys [assert-count]} (ha/add-literals!
                                              predicate
-                                             context
-                                             asserter
+                                             (mapv (comp f/args f/negatum) negations)
                                              false
-                                             (mapv (comp f/args f/negatum) negations))]
+                                             context
+                                             asserter)]
                  (update acc :assert-count (fnil + 0) assert-count)))
              atom-asserts
              negations-by-predicate)))))

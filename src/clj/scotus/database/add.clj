@@ -62,7 +62,7 @@
           all-cols      (concat [[:id :uuid [:not nil]]]
                                 clean-cols
                                 required-cols)
-          table-spec    (-> (h/create-table table-key)
+          table-spec    (-> (h/create-table table-key :if-not-exists)
                             (h/with-columns all-cols))
           ;; create table
           table-success? (utils/ddl-success? (utils/execute! table-spec))
@@ -129,13 +129,18 @@
 (defn update-column-type [table column new-type]
   (let [column-type-string (case new-type
                              "date" "::date"
-                             "time" "::time")]
-    (-> (h/alter-table (utils/to-keyword table))
-        (h/alter-column (utils/to-keyword column) :type (keyword new-type))
-        (h/using
-         [[:raw (-> column
-                    utils/to-keyword
-                    str
-                    (subs 1)
-                    (str column-type-string))]])
-        utils/execute!)))
+                             "time" "::time"
+                             "integer" "::integer"
+                             "boolean" "::boolean"
+                             "ip" "::cidr"
+                             "uuid" "::uuid")]
+    (when column-type-string
+      (-> (h/alter-table (utils/to-keyword table))
+          (h/alter-column (utils/to-keyword column) :type (keyword new-type))
+          (h/using
+           [[:raw (-> column
+                      utils/to-keyword
+                      str
+                      (subs 1)
+                      (str column-type-string))]])
+          utils/execute!))))

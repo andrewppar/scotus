@@ -68,7 +68,7 @@
   - `asserter` is a required keyword argument."
   [predicate & {:keys [args]}]
   [args]
-  (assert/predicate! predicate args))
+  (assert/predicate! predicate :args args))
 
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.

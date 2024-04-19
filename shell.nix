@@ -54,6 +54,11 @@ let
 
   alias = {name, command}: "alias " + name + ''="'' + command + ''" ;'' ;
 
+  pgcli-local = alias {
+    name = "pgcli-local";
+    command = "pgcli postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
+  } ;
+
   psql-local = alias {
     name = "psql-local";
     command = "psql postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
@@ -90,7 +95,8 @@ let
   };
 
   aliases =
-    psql-local
+    pgcli-local
+    + psql-local
     + test
     + db-init
     + db-create
@@ -103,6 +109,7 @@ pkgs.mkShell {
     clojure
     postgresql
     less
+    pgcli
   ] ;
 
   DB_LOC = ".tmp/kb" ;
