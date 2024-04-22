@@ -38,8 +38,6 @@
          (h/with-columns [[:id :uuid] [:derived :bool] [:justification :jsonb]])
          utils/execute!)
 
-
-
      (-> (h/create-table :assertion-justification)
          (h/with-columns [[:assertion-id :uuid] [:justification-id :uuid]])
          utils/execute!)
@@ -75,16 +73,37 @@
 ;;; add rows
 
 (defn make-table-row [context negated? arg-columns spec]
-  (let [args (zipmap arg-columns spec)]
+  (let [args (into {} (map (fn [arg-spec arg]
+                             (if (vector? arg-spec)
+                               [(first arg-spec) [:cast arg (second arg-spec)]]
+                               [arg-spec arg]))
+                           arg-columns
+                           spec))]
     (assoc args
            :id (utils/->uuid (sort (assoc args :context context)))
            :context context
            :negative negated?)))
 
+
+
+(defn make-table-headers [table]
+  (reduce-kv
+   (fn [acc column data-type]
+     (let [cast-type (case data-type
+                       "date" :date
+                       "time without time zone" :time
+                       "uuid" :uuid
+                       nil)]
+       (if cast-type
+         (conj acc [(utils/to-keyword column) cast-type])
+         (conj acc (utils/to-keyword column)))))
+   []
+   (state/table-arg-types table)))
+
 (defn add-rows-by-table
   "Add rows to a table all with the same justification, context, and negated value."
   [table context justification negated? specs]
-  (let [table-arg-columns (mapv utils/to-keyword (state/table-args table))
+  (let [table-arg-columns (make-table-headers table)
         rows (map (partial make-table-row context negated? table-arg-columns) specs)
         justification-id (if (string? justification)
                            (utils/->uuid justification)
@@ -135,12 +154,13 @@
                              "ip" "::cidr"
                              "uuid" "::uuid")]
     (when column-type-string
-      (-> (h/alter-table (utils/to-keyword table))
-          (h/alter-column (utils/to-keyword column) :type (keyword new-type))
-          (h/using
-           [[:raw (-> column
-                      utils/to-keyword
-                      str
-                      (subs 1)
-                      (str column-type-string))]])
-          utils/execute!))))
+      (state/with-refreshed-index
+        (-> (h/alter-table (utils/to-keyword table))
+            (h/alter-column (utils/to-keyword column) :type (keyword new-type))
+            (h/using
+             [[:raw (-> column
+                        utils/to-keyword
+                        str
+                        (subs 1)
+                        (str column-type-string))]])
+            utils/execute!)))))
