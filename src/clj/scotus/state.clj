@@ -127,7 +127,6 @@
 (defn table-arg-types [table]
   (get-in (predicate-index) [table :column-types]))
 
-
 (defmacro with-refreshed-index [& body]
   {:style/indent 1}
   `(let [result# (do ~@body)]
