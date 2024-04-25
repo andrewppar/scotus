@@ -1,9 +1,13 @@
 (ns scotus.query.assert-spec-test
   (:require
-   [clojure.test :refer [testing is deftest]]
+   [clojure.test :refer [testing is deftest use-fixtures]]
+   [scotus.database.test-utils :refer [each-fixture once-fixture]]
    [scotus.query.assert-spec :as aspec]))
 
-(deftest t->binding
+(use-fixtures :each each-fixture)
+(use-fixtures :once once-fixture)
+
+(deftest ^:integration t->binding
   (is (= '{?x "dog"}
          (aspec/->binding
           '["subclass_of" ?x "mammal"]
