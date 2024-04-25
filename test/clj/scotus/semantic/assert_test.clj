@@ -96,7 +96,17 @@
     (assert/! ["age" "anthony" "1"] :asserter "anparisi")
     (assert/! ["arg_instance" "age" "age" "integer"])
     (is (= "integer" (column-data-type "age" "age")))
-    (is (= '#{{?age 1}} (q/query '["age" "anthony" ?age])))))
+    (is (= '#{{?age 1}} (q/query '["age" "anthony" ?age]))))
+
+  (testing "integer with arg after assert"
+    (retract/predicate! "age")
+    (assert/predicate! "age" :args ["name" "age"])
+    (assert/! ["age" "anthony" "1"] :asserter "anparisi")
+    (assert/! ["arg_instance" "age" "age" "integer"])
+    (is (= "integer" (column-data-type "age" "age")))
+    (is (thrown?
+         Exception
+         (assert/! ["age" "george" "one"] :asserter "anparisi")))))
 
 ;;  )
 ;;(testing "date")

@@ -37,6 +37,9 @@
       (assoc result :justification new-justification)
       result)))
 
+(defn without-justification [binding]
+  (dissoc binding :justification))
+
 (defn find [binding-maps search-key search-value]
   (some
    (fn [m] (when (= (get m search-key) search-value) m))

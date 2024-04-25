@@ -3,18 +3,30 @@
    [scotus.database.query :as dbq]
    [scotus.query.assert-spec :as assert-spec]
    [scotus.query.binding :as binding]
+   [scotus.query.resolution :as resolution]
    [scotus.semantic.literal :as lit]
    [scotus.semantic.resolution :as r]
    [scotus.syntax.formula :as f]
    [scotus.transitivity.closure :as cl]))
 
 ;;; These should have their own namespace
-(defn get-resolution-fn [formula] nil)
 
-(defn resolve-formula [bindings formula resolution-fn context justification?]
-  (if-let [resolution-fn (get-resolution-fn formula)]
-    (resolution-fn formula bindings context justification?)
-    bindings))
+(defn resolve-formula [bindings formula context justification?]
+  (reduce
+   (fn [acc {:keys [resolve-fn name]}]
+     (let [new-bindings (resolve-fn formula bindings context)]
+       (if (seq new-bindings)
+         (reduce (fn [acc* new-binding]
+                  (if (contains? (set (map binding/without-justification acc)) new-binding)
+                    acc*
+                    (conj acc* (if justification?
+                                 (update new-binding :justification (fnil conj []) name)
+                                 new-binding))))
+                acc
+                new-bindings)
+         acc)))
+   #{}
+   (resolution/get-fns formula bindings)))
 
 ;;; Simple Lookup
 
@@ -194,9 +206,9 @@
   [atomic-formula bindings &
    {:keys [context justification?]
     :or {context "universal" justification? false}}]
-  (if-let [resolution-fn (get-resolution-fn atomic-formula)]
+  (if (resolution/? atomic-formula bindings)
     ;; Resolution Module Available
-    (resolve-formula bindings atomic-formula resolution-fn context justification?)
+    (resolve-formula bindings atomic-formula context justification?)
     (if-let [transitive-asserts (get-transitive-asserts atomic-formula context)]
       ;; Some Formula args are transitive
       (transitivity bindings atomic-formula transitive-asserts context justification?)

@@ -24,6 +24,12 @@
     [(comp (fn [pred] (not= pred "asserted")) formula/predicate) nil]
     ;;; Looking for unknown things should alwasy come last
     [(comp (fn [pred] (= pred "unknown")) formula/predicate) nil]
+    ;;; resolution predicates
+    [(comp (fn [pred] (= pred "<=")) formula/predicate) nil]
+    [(comp (fn [pred] (= pred ">=")) formula/predicate) nil]
+    [(comp (fn [pred] (= pred "<")) formula/predicate) nil]
+    [(comp (fn [pred] (= pred ">")) formula/predicate) nil]
+
     ;;; We should prioritize formulas with fewer variables
     [(comp count formula/variables) <]
     ;;; We should prioritize restricting search space with smaller tables

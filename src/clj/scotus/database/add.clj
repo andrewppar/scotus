@@ -133,7 +133,9 @@
                              "integer" "::integer"
                              "boolean" "::boolean"
                              "ip" "::cidr"
-                             "uuid" "::uuid")]
+                             "uuid" "::uuid"
+                             #_#_"assertion" "::uuid"
+                             nil)]
     (when column-type-string
       (-> (h/alter-table (utils/to-keyword table))
           (h/alter-column (utils/to-keyword column) :type (keyword new-type))

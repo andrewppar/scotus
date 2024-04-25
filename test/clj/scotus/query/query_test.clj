@@ -123,3 +123,50 @@
               {?condition "disease"}
               {?condition "biological_state"}}
            (q/query '["has_condition" "pat_01" ?condition] :context "hospital")))))
+
+(deftest t-resolution-lookup
+  (retract/predicate! "age")
+  (assert/predicate! "age" :args ["person" "age"])
+  (assert/!
+   [:and
+    ["arg_instance" "age" "age" "integer"]]
+   :asserter "anparisi")
+  (assert/!
+   [:and
+    ["age" "andrew" 36]
+    ["age" "george" 1]
+    ["age" "anthony" 1]
+    ["age" "xenia" 34]]
+   :asserter "anparisi")
+  (is (= '#{{?person "xenia" ?age 34}
+            {?person "george" ?age 1}
+            {?person "anthony" ?age 1}}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    ["<=" ?age 35]])))
+  (is (= '#{{?person "george" ?age 1}
+            {?person "anthony" ?age 1}}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    ["<=" ?age 1]])))
+
+  (is (= '#{{?person "xenia" ?age 34}
+            {?person "andrew" ?age 36}}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    [">=" ?age 2]])))
+
+  (is (= '#{{?person "andrew" ?age 36}}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    [">=" ?age 35]])))
+
+  (is (= '#{}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    [">=" ?age 38]])))
+
+  (is (= '#{}
+         (q/query '[:and
+                    ["age" ?person ?age]
+                    ["<=" ?age 0]]))))

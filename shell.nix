@@ -2,48 +2,62 @@ let
   nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-23.11" ;
   pkgs = import nixpkgs { config= {} ; overlays = [ ]; } ;
 
-  test-all = ''
-   function test-all () {
-     pg_ctl -D $DB_LOC -U postgres -l logfile start ;
-     time clj -M:dev/test -m kaocha.runner ;
-   }
-  '' ;
+  ## Useful commands
 
-  test-integration = ''
-    function test-integration () {
-      pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start ;
-      time clj -M:dev/test -m kaocha.runner --focus-meta :integration ;
-    }
-   '' ;
+  db-start-cmd = ''pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start ;'';
 
-  run = ''
-   function run () {
-     pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start
-     clj -M:dev/repl
-   }
-  '' ;
 
-  stop = ''
-    function stop () {
-     while true ; do
-       read -p  "tear down scotus services? (y/n) " reply
-       case $reply in
-         [yY] )  echo "stopping scotus services"
-                pg_ctl -D $DB_LOC -U postgres -l logfile stop
-                echo "good bye"
-                exit ;;
-         * ) echo " good bye"
-              exit ;;
-       esac
-     done
-    }
-  '' ;
+  ## Functions
+  make-body = {commands}: builtins.foldl'
+    (acc: str: acc + "  " + str + "\n")
+    ""
+    commands ;
 
-  db-start = ''
-    function db-start () {
-        pg_ctl -o "-F -p $DB__PORT" -D $DB_LOC -U postgres -l logfile start ;
-    }
-  '' ;
+  shell-fn = {name, body} : "function " + name + " () {\n"
+                            + make-body { commands = body ;}
+                            + "\n}; \n" ;
+
+   db-start = shell-fn {
+
+       name = "db-start" ;
+      body = [db-start-cmd] ;
+    } ;
+
+  run = shell-fn {
+    name = "run" ;
+    body = [db-start-cmd "clj -M:dev/repl"] ;
+  };
+
+  stop = shell-fn {
+    name = "stop" ;
+    body = [
+      ''while true ; do''
+      ''  read -p  "tear down scotus services? (y/n) " reply''
+      ''  case $reply in''
+      ''    [yY] )  echo "stopping scotus services"''
+      ''           pg_ctl -D $DB_LOC -U postgres -l logfile stop''
+      ''           echo "good bye"'' ''           exit ;;''
+      ''    * ) echo " good bye"''
+      ''         exit ;;''
+      ''  esac''
+      ''done''] ;
+  } ;
+
+  test-all = shell-fn {
+    name = "test-all" ;
+    body = [
+      db-start-cmd
+      "time clj -M:dev/test -m kaocha.runner;"
+    ] ;
+  };
+
+  test-integration = shell-fn {
+    name = "test-integration" ;
+    body = [
+      db-start-cmd
+      "time clj -M:dev/test -m kaocha.runner --focus-meta :integration ;"
+    ] ;
+  };
 
   functions =
     db-start
@@ -51,6 +65,8 @@ let
     + stop
     + test-all
     + test-integration ;
+
+  ## Aliases
 
   alias = {name, command}: "alias " + name + ''="'' + command + ''" ;'' ;
 
