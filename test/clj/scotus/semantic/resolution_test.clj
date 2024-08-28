@@ -26,7 +26,7 @@
                       str)]
     (is (= ["believes" "anparisi" {:formula ["instance" "Penny" "dog"]
                                    :context "universal"}]
-           (resolution/<-literal["believes" "anparisi" assert-id])))))
+           (resolution/<-literal ["believes" "anparisi" assert-id])))))
 
 (deftest ^:integration t-unresolve
   (retract/predicate! "believes")

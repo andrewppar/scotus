@@ -1,4 +1,4 @@
-(ns scotus.transitivity.closure
+(ns scotus.logic.closure
   (:require [scotus.database.query :as dbq]
             [scotus.state :as state]))
 

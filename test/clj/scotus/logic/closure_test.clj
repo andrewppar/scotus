@@ -1,9 +1,9 @@
-(ns scotus.transitivity.closure-test
+(ns scotus.logic.closure-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [scotus.database.test-utils :refer [each-fixture once-fixture]]
    [scotus.semantic.assert :as assert]
-   [scotus.transitivity.closure :as cl]))
+   [scotus.logic.closure :as cl]))
 
 
 (use-fixtures :each each-fixture)

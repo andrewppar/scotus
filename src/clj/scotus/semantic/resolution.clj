@@ -4,7 +4,7 @@
    [scotus.query.assert-spec :as assert-spec]
    [scotus.semantic.literal :as literal]
    [scotus.syntax.formula :as f]
-   [scotus.transitivity.closure :as cl]))
+   [scotus.logic.closure :as cl]))
 
 (defn ->context
   "Resolve a `context` into all its subcontexts."

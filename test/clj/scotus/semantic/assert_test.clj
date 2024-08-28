@@ -108,9 +108,12 @@
          Exception
          (assert/! ["age" "george" "one"] :asserter "anparisi")))))
 
-;;  )
-;;(testing "date")
-;;(testing "id")
-;;(testing "nothing interesting to do")
-;;
-;;)
+(deftest ^:integration t-assert-new-context
+  (testing "making assertion with new context creates it."
+    (let [ctxt (str (random-uuid))]
+      (retract/predicate! "age")
+      (assert/predicate! "age" :args ["name" "age"])
+      (assert/! ["age" "anparisi" "36"] :context ctxt :asserter "anparisi")
+      (is (seq (q/query '["age" "anparisi" "36"] :context ctxt)))
+      ;; justification isn't wired in for this yet...
+      (is (seq (q/query `["instance" ~ctxt "context"] :justification? true))))))

@@ -1,5 +1,6 @@
 (ns scotus.query.literal
   (:require
+   [clojure.string :as string]
    [scotus.database.query :as dbq]
    [scotus.query.assert-spec :as assert-spec]
    [scotus.query.binding :as binding]
@@ -7,26 +8,7 @@
    [scotus.semantic.literal :as lit]
    [scotus.semantic.resolution :as r]
    [scotus.syntax.formula :as f]
-   [scotus.transitivity.closure :as cl]))
-
-;;; These should have their own namespace
-
-(defn resolve-formula [bindings formula context justification?]
-  (reduce
-   (fn [acc {:keys [resolve-fn name]}]
-     (let [new-bindings (resolve-fn formula bindings context)]
-       (if (seq new-bindings)
-         (reduce (fn [acc* new-binding]
-                  (if (contains? (set (map binding/without-justification acc)) new-binding)
-                    acc*
-                    (conj acc* (if justification?
-                                 (update new-binding :justification (fnil conj []) name)
-                                 new-binding))))
-                acc
-                new-bindings)
-         acc)))
-   #{}
-   (resolution/get-fns formula bindings)))
+   [scotus.logic.closure :as cl]))
 
 ;;; Simple Lookup
 
@@ -40,10 +22,14 @@
         subformula (if negated? (f/negatum original-formula) original-formula)
         formulas  (binding/formula-apply-all subformula bindings)
         specs (map (comp args->spec f/args) formulas)
-        pred (f/predicate subformula)]
-    (->> (dbq/lookup-rows pred (r/->context context) negated? specs)
+        contexts (r/->context context)
+        pred (f/predicate subformula)
+        base-results (if (f/variable? pred)
+                       (dbq/lookup-asserts-for-all-preds contexts negated? specs)
+                       (dbq/lookup-rows pred contexts negated? specs))]
+    (->> base-results
          (map
-          (fn[assert]
+          (fn [assert]
             (assert-spec/->binding
              original-formula assert :justification? justification?)))
          (binding/extend-all-filtering bindings)
@@ -52,10 +38,11 @@
 ;;; Transitivity
 
 (defn get-transitive-asserts [formula context]
-  (let [pred (f/predicate formula)
-        spec [[pred nil nil nil nil]]]
-    (seq
-     (dbq/lookup-rows "transitive_arg" [context] false spec))))
+  (let [pred (f/predicate formula)]
+    (if (f/variable? pred)
+      '()
+      (let [spec [[pred nil nil nil nil]]]
+        (seq (dbq/lookup-rows "transitive_arg" [context] false spec))))))
 
 (defn ^:private bindings-for-upward-closure
   [db-result
@@ -120,20 +107,21 @@
     (or
      (some
       (fn [closure]
-        (when-let [justification (->> to-match
-                                      (cl/slice closure from-key)
-                                      (map assert-spec/->formula)
-                                      vec)]
-          (let [start-arg (assert-spec/lookup (first closure) to_arg)
-                arg-key (keyword (f/literal-predicate query) arg_name)
-                updated-db-spec (assoc db-result arg-key start-arg)
-                binding  (assert-spec/->binding query updated-db-spec)]
-            (if justification?
-              (assoc binding
-                     :justification
-                     (conj justification
-                           (assert-spec/->formula db-result)))
-              binding))))
+        (let [justification (->> to-match
+                                 (cl/slice closure from-key)
+                                 (map assert-spec/->formula)
+                                 vec)]
+          (when (seq justification)
+            (let [start-arg (assert-spec/lookup (first closure) to_arg)
+                  arg-key (keyword (f/literal-predicate query) arg_name)
+                  updated-db-spec (assoc db-result arg-key start-arg)
+                  binding  (assert-spec/->binding query updated-db-spec)]
+              (if justification?
+                (assoc binding
+                       :justification
+                       (conj justification
+                             (assert-spec/->formula db-result)))
+                binding)))))
       closures)
      (cond-> (assert-spec/->binding query db-result)
        justification? (update :justification (fnil conj [])
@@ -166,6 +154,8 @@
                              query-spec)))
                    #{}
                    queries)
+        ;; why are we dointg a db lookup here again? If you remember or
+        ;; figure it out write it down here
         new-results (dbq/lookup-rows pred (r/->context context) false new-specs)]
     (->> new-results
          (mapv
@@ -180,7 +170,6 @@
 (defn transitivity
   [bindings query transitive-asserts context justification?]
   (let [queries (binding/formula-apply-all query bindings)]
-
     (set
      (reduce
       (fn [result {:transitive_arg/keys [arg_name] :as assert}]
@@ -202,14 +191,69 @@
       bindings
       transitive-asserts))))
 
+;;; These should have their own namespace
+
+(defn ^:private add-reflexivity [predicate justification? binding]
+  (let [binding-length (count binding)
+        justification (get binding :justification)
+        values (dissoc binding :justification)]
+    (conj
+     (map
+      (fn [value]
+        (let [new-binding (update-vals binding (fn [_] value))]
+          (if justification?
+            (assoc new-binding
+                   :justification (->> value
+                                       (repeat binding-length)
+                                       (into [predicate])
+                                       (conj justification)))
+            new-binding)))
+      (vals values))
+     ;; should the justification on the old binding be updated?
+     binding)))
+
+(defn resolve-subclass-of [bindings formula context justification?]
+  (let [args (f/args formula)]
+    (if (not= (count args) 2)
+      (throw (ex-info "malformed query literal (how'd this get here?)"
+                      {:caused-by formula}))
+      (let [transitive-asserts (get-transitive-asserts formula context)
+            new-bindings (transitivity
+                          bindings formula transitive-asserts context justification?)]
+        (if (and (f/variable? (first args))
+                 (f/variable? (second args)))
+          (set (mapcat (partial add-reflexivity "subclass_of" justification?) new-bindings))
+          (let [var (some (fn [arg] (when (f/variable? arg) arg)) args)
+                value (some (fn [arg] (when-not (f/variable? arg) arg)) args)
+                new-justification ["subclass_of" value value]
+                new-binding (if justification?
+                              {var value :justification #{new-justification}}
+                              {var value})
+                result-bindings (conj new-bindings new-binding)]
+            (set
+             (if justification?
+               (map
+                (fn [binding]
+                  (update binding :justification conj
+                          new-justification))
+                result-bindings)
+               result-bindings))))))))
+
+(defn get-resolution-fn [formula]
+  (let [pred (f/predicate formula)]
+    nil
+    (cond (= pred "subclass_of")
+          #'resolve-subclass-of
+          :else nil)))
+
 (defn query
   [atomic-formula bindings &
    {:keys [context justification?]
     :or {context "universal" justification? false}}]
   (if (resolution/? atomic-formula bindings)
     ;; Resolution Module Available
-    (resolve-formula bindings atomic-formula context justification?)
-    (if-let [transitive-asserts (get-transitive-asserts atomic-formula context)]
+    (resolution-fn bindings atomic-formula context justification?)
+    (if-let [transitive-asserts (seq (get-transitive-asserts atomic-formula context))]
       ;; Some Formula args are transitive
       (transitivity bindings atomic-formula transitive-asserts context justification?)
       ;; Just see if we find anything

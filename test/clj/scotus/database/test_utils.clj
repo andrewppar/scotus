@@ -5,6 +5,7 @@
    [scotus.state :as state]))
 
 (defn once-fixture [f]
+  (config/init!)
   (let [old-kb (config/get-item :db :name)]
     (config/init!)
     (config/set-item [:db :name] "kb_test")

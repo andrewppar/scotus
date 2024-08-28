@@ -1,6 +1,5 @@
 let
-  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-23.11" ;
-  pkgs = import nixpkgs { config= {} ; overlays = [ ]; } ;
+  pkgs = import <nixpkgs> {};
 
   ## Useful commands
 
@@ -60,7 +59,9 @@ let
   };
 
   functions =
-    db-start
+    db-reset
+    + db-reset-test
+    + db-start
     + run
     + stop
     + test-all
@@ -70,39 +71,24 @@ let
 
   alias = {name, command}: "alias " + name + ''="'' + command + ''" ;'' ;
 
-  pgcli-local = alias {
-    name = "pgcli-local";
-    command = "pgcli postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
-  } ;
-
   psql-local = alias {
     name = "psql-local";
     command = "psql postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
   } ;
-
-  test = alias {
-    name = "test" ;
-    command = "time clj -M:dev/test -m kaocha.runner --skip-meta :integration" ;
-  } ;
-
-  db-init = alias {
-    name = "db-init" ;
-    command = "initdb -D $DB_LOC -U postgres" ;
-  };
 
   db-create = alias {
     name = "db-create" ;
     command = "createdb -p $DB__PORT -U postgres kb";
   } ;
 
-  db-test-create = alias {
+  db-create-test = alias {
     name = "db-test-create" ;
-    command = "createdb -p $DB__PORT -U postgres kb-test";
+    command = "createdb -p $DB__PORT -U postgres kb_test";
   } ;
 
-  db-stop = alias {
-    name = "db-stop" ;
-    command = "pg_ctl -D $DB_LOC -U postgres -l logfile stop" ;
+  db-init = alias {
+    name = "db-init" ;
+    command = "initdb -E UTF8 -D $DB_LOC -U postgres" ;
   };
 
   db-status = alias {
@@ -110,13 +96,32 @@ let
     command = "pg_ctl -D $DB_LOC status" ;
   };
 
+  db-stop = alias {
+    name = "db-stop" ;
+    command = "pg_ctl -D $DB_LOC -U postgres -l logfile stop" ;
+  };
+
+
+  pgcli-local = alias {
+    name = "pgcli-local";
+    command = "pgcli postgresql://postgres:postgres@localhost:$DB__PORT/kb" ;
+  } ;
+
+  test = alias {
+    name = "test" ;
+    command = "time clj -M:dev/test -m kaocha.runner --skip-meta :integration" ;
+  } ;
+
+
+
+
   aliases =
     pgcli-local
     + psql-local
     + test
     + db-init
     + db-create
-    + db-test-create
+    + db-create-test
     + db-stop
     + db-status ;
 in

@@ -15,12 +15,13 @@
 (defn ^:private create-index
   "Create an index for `table` on `column` using `opts`"
   [table column {:keys [unique] :as _opts}]
-  (let [table-name  (utils/clean-object-name table)
+  (let [table-name-for-idx  (utils/clean-object-name table)
+        table-name (name (utils/to-keyword table))
         column-name (utils/clean-object-name column)
         unique     (if unique "UNIQUE" "")
         spec [(format
-               "CREATE %s INDEX %s_%s ON %s (%s)"
-               unique table-name column-name table-name column-name)]]
+               "CREATE %s INDEX %s__%s ON \"%s\" (%s)"
+               unique table-name-for-idx column-name table-name column-name)]]
     (utils/ddl-success? (jdbc/execute! (state/db-connection) spec))))
 
 (defn create-assertion-predicate-lookup []
@@ -55,7 +56,7 @@
           required-cols [[:negative :boolean]
                          [:context [:varchar 50]]]
           clean-cols   (mapv
-                        (fn [col] [(utils/to-keyword col) [:varchar 500]])
+                        (fn [col] [(utils/to-keyword col) :text])
                         columns)
           all-cols      (concat [[:id :uuid [:not nil]]]
                                 clean-cols

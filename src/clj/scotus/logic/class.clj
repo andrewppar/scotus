@@ -1,7 +1,7 @@
-(ns scotus.transitivity.class
+(ns scotus.logic.class
   (:require
    [clojure.set :as set]
-   [scotus.transitivity.closure :as cl]
+   [scotus.logic.closure :as cl]
    [scotus.database.query :as dbq]))
 
 (defn ->formula [{:subclass_of/keys [subclass superclass]}]

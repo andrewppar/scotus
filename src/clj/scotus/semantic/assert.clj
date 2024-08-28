@@ -2,6 +2,7 @@
   (:require
    [scotus.heuristic.assert :as ha]
    [scotus.database.add :as add]
+   [scotus.semantic.well-formed :as wf]
    [scotus.syntax.formula :as f]
    [scotus.syntax.xnf :as xnf]))
 
@@ -51,5 +52,9 @@
              negations-by-predicate)))))
 
 (defn predicate!
-  [predicate & {:keys [args]}]
-  (apply add/create-table! predicate args))
+  [predicate & {:keys [args asserter]}]
+  (when-not  (wf/predicate? predicate)
+    (! ["instance" predicate "predicate"]
+       :context "universal"
+       :asserter asserter)
+    (apply add/create-table! predicate args)))

@@ -11,7 +11,11 @@
      (literal/query
       literal result :context context :justification? justification?))
    {}
-   (canon/sort-conjuncts (f/args conjunction))))
+
+   (canon/sort-conjuncts
+    (if (f/literal? conjunction)
+      [conjunction]
+      (f/args conjunction)))))
 
 (defn query
   [query &

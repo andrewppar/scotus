@@ -55,7 +55,10 @@
                         (update :contexts (fnil conj #{}) "universal"))
                     row-specs))
           utils/execute!)
-      (utils/execute! query-start))))
+      (utils/execute!
+       (-> query-start
+           (h/where
+            [:in :context (or contexts ["universal"])]))))))
 
 (defn lookup-rows
   [table contexts negated? row-specs & {:keys [include-meta?] :or
@@ -64,10 +67,12 @@
                  :contexts contexts
                  :negated? negated?
                  :include-meta? include-meta?}]
-  (->> row-specs
-       (partition-all 10000)
-       (pmap (partial lookup-rows-serial options))
-       (apply concat))))
+    (if (seq row-specs)
+      (->> row-specs
+           (partition-all 10000)
+           (pmap (partial lookup-rows-serial options))
+           (apply concat))
+      (lookup-rows-serial options row-specs))))
 
 (defn lookup-assertion
   [assertion-id]
@@ -85,13 +90,46 @@
         first)))
 
 (defn lookup-for-all-preds
-  [contexts negated? row-specs & {:keys [include-meta?] :or
-                                  {include-meta? false}}]
+  [contexts negated? row-specs
+   & {:keys [preds include-meta?] :or
+      {include-meta? false
+       preds (state/tables)}}]
   (mapcat
    (fn [table]
      (lookup-rows
       table contexts negated? row-specs :include-meta? include-meta?))
-   (state/tables)))
+   preds))
+
+(defn lookup-asserts-for-all-preds
+  [contexts negated? row-specs
+   & {:keys [preds include-meta?] :or
+      {include-meta? false
+       preds (state/tables)}}]
+  (let [min-row-spec-size (apply min (map count row-specs))
+        applicable-preds  (->> preds
+                               (filter
+                                (fn [predicate]
+                                  (<= min-row-spec-size
+                                      (count (state/table-args predicate)))))
+                               (remove
+                                (fn [pred]
+                                  (contains? #{"assertion_predicate_lookup"
+                                               "assertion_justification"
+                                               "justification"}
+                                             pred))))]
+    (when (seq applicable-preds)
+      (lookup-for-all-preds
+       contexts negated? row-specs
+       :preds applicable-preds :include-meta? include-meta?))))
+
+
 
 (defn context [context]
-  (lookup-for-all-preds [context] false {} :include-meta? true))
+  (let [preds (remove
+               (fn [pred]
+                 (contains? #{"assertion_predicate_lookup"
+                              "assertion_justification"
+                              "justification"}
+                            pred))
+               (state/tables))]
+    (lookup-for-all-preds [context] false {} :include-meta? true :preds preds)))

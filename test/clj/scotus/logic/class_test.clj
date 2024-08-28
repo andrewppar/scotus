@@ -1,8 +1,8 @@
-(ns scotus.transitivity.class-test
+(ns scotus.logic.class-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [scotus.database.test-utils :refer [each-fixture once-fixture]]
-   [scotus.transitivity.class :as scl]
+   [scotus.logic.class :as scl]
    [scotus.semantic.assert :as assert]))
 
 (use-fixtures :once once-fixture)

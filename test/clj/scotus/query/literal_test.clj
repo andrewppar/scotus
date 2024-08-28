@@ -262,4 +262,54 @@
 
   (is (= '#{{?pat "pat_x" ?disease "cancer"}}
          (literal/query '["has_disease" ?pat ?disease]
-                        '#{{?disease "cancer"}}))))
+                        '#{{?disease "cancer"}})))
+
+  (is (= '#{{?subclass "disease"}
+            {?subclass "heart disease"}
+            {?subclass "chf"}
+            {?subclass "cancer"}
+            {?subclass "lung cancer"}
+            {?subclass "nsclc"}}
+         (literal/query '["subclass_of" ?subclass "disease"]
+                        '#{})))
+
+  (is (= '#{{?subclass "disease"
+             :justification #{["subclass_of" "disease" "disease"]}}
+            {?subclass "heart disease"
+             :justification #{["subclass_of" "heart disease" "disease"]
+                              ["subclass_of" "disease" "disease"]}}
+            {?subclass "chf"
+             :justification #{["subclass_of" "chf" "heart disease"]
+                              ["subclass_of" "heart disease" "disease"]
+                              ["subclass_of" "disease" "disease"]}}
+            {?subclass "cancer"
+             :justification #{["subclass_of" "cancer" "disease"]
+                              ["subclass_of" "disease" "disease"]}}
+            {?subclass "lung cancer"
+             :justification #{["subclass_of" "lung cancer" "cancer"]
+                              ["subclass_of" "cancer" "disease"]
+                              ["subclass_of" "disease" "disease"]}}
+            {?subclass "nsclc"
+             :justification #{["subclass_of" "nsclc" "lung cancer"]
+                              ["subclass_of" "lung cancer" "cancer"]
+                              ["subclass_of" "cancer" "disease"]
+                              ["subclass_of" "disease" "disease"]}}}
+         (literal/query '["subclass_of" ?subclass "disease"]
+                        '#{} :justification? true)))
+
+  (is (= '#{{?subclass "disease" ?superclass "disease"}
+	    {?subclass "chf" ?superclass "heart disease"}
+	    {?subclass "lung cancer" ?superclass "cancer"}
+	    {?subclass "cancer" ?superclass "cancer"}
+	    {?subclass "heart disease" ?superclass "heart disease"}
+	    {?subclass "nsclc" ?superclass "lung cancer"}
+	    {?subclass "nsclc" ?superclass "nsclc"}
+	    {?subclass "lung cancer" ?superclass "disease"}
+	    {?subclass "nsclc" ?superclass "disease"}
+	    {?subclass "nsclc" ?superclass "cancer"}
+	    {?subclass "chf" ?superclass "chf"}
+	    {?subclass "lung cancer" ?superclass "lung cancer"}
+	    {?subclass "chf" ?superclass "disease"}}
+         (literal/query '["subclass_of" ?subclass ?superclass]
+                        '#{})))
+  )

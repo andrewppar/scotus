@@ -4,6 +4,7 @@
    [scotus.setup :as setup]
    [scotus.state :as state]
    [scotus.query.query :as query]
+   [scotus.database.query :as lookup]
    [scotus.semantic.assert :as assert]
    [scotus.semantic.retract :as retract]))
 
@@ -66,9 +67,9 @@
   - `args` is a required keyword argument that names the arguments for
            the newly created predicate.
   - `asserter` is a required keyword argument."
-  [predicate & {:keys [args]}]
-  [args]
-  (assert/predicate! predicate :args args))
+  [predicate & {:keys [args asserter]}]
+  [args asserter]
+  (assert/predicate! predicate :args args :asserter asserter))
 
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.
@@ -78,7 +79,6 @@
   []
   (retract/predicate! predicate))
 
-
 (defn-api query
   "Run a query."
   [formula &
@@ -86,6 +86,12 @@
     :or {context "universal" justification? false}}]
   []
   (query/query formula :context context :justification? justification?))
+
+(defn-api context
+  "Get all the assertions in a context."
+  [context]
+  [context]
+  (lookup/context context))
 
 (defn-api retract!
   "Remove an assertion.
@@ -112,4 +118,10 @@
 
 (comment
   (init!)
-  (state/tables))
+  (state/tables)
+
+
+  (context "ocsf")
+
+  (query '["instance" ?x "context"])
+  )

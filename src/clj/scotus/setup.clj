@@ -103,6 +103,9 @@
   (dba/create-assertion-predicate-lookup)
   (dba/create-justification-table)
   (mapv (fn [spec] (apply dba/create-table! spec)) required-tables)
+  (->> required-tables
+       (mapv (fn [spec] [(first spec) "predicate"]))
+       (dba/add-rows-by-table "instance" "universal" "anparisi" false))
   (am/merge-assert-maps
    {:assert-count 0}
    (add-setup-asserts required-positive-rows false)

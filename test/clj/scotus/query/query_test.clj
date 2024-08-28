@@ -98,6 +98,15 @@
                       [:or
                        ["label" ?disease "Cancer"]
                        ["label" ?disease "Heart Disease"]]]
+                    :justification? true))))
+  (testing "second order query"
+    (is (= '#{{:justification [["subclass_of" "C15" "C01"]]
+	       ?value "C01"
+	       ?predicate "subclass_of"}
+	      {:justification [["label" "C15" "Cancer"]]
+	       ?value "Cancer"
+	       ?predicate "label"}}
+           (q/query '[?predicate "C15" ?value]
                     :justification? true)))))
 
 (deftest t-query-contexts

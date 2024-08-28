@@ -21,11 +21,15 @@
 
 (defn clean-object-name
   [item]
+  (string/replace item #"[- :#@]" "_"))
+
+(defn clean-table-name
+  [item]
   (string/replace item #"[- ]" "_"))
 
 (defn to-keyword
   [item]
-  (-> item clean-object-name keyword))
+  (-> item clean-table-name keyword))
 
 (defn ->uuid
   [item]
