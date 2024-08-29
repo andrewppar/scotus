@@ -69,7 +69,7 @@
      (fn []
        (update
         (paths->justification paths :subclass)
-        arg (fnil conj #{}) ["subclass_of" arg arg])))))
+        arg (fnil conj #{}) #{["subclass_of" arg arg]})))))
 
 (defn subclass?
   "The return for this (like queries) is either #{} or #{#{}} with the

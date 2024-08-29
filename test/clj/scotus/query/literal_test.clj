@@ -83,24 +83,24 @@
              ["subclass_of" "heart disease" "disease"]]
             :asserter "anparisi")
 
-  #_(is (= '#{{?x "pat_x"}}
+  (is (= '#{{?x "pat_x"}}
          (literal/query '["has_disease" ?x "cancer"] #{})))
 
-  #_(is (= '#{{?x "pat_x"} {?x "pat_y"}}
+  (is (= '#{{?x "pat_x"} {?x "pat_y"}}
          (literal/query '["has_disease" ?x "disease"] #{})))
 
-  #_(is (= '#{{?disease "nsclc"}
+  (is (= '#{{?disease "nsclc"}
             {?disease "lung cancer"}
             {?disease "cancer"}
             {?disease "disease"}}
          (literal/query '["has_disease" "pat_x" ?disease] #{})))
 
-  #_(is (= '#{{?disease "chf"}
+  (is (= '#{{?disease "chf"}
             {?disease "heart disease"}
             {?disease "disease"}}
          (literal/query '["has_disease" "pat_y" ?disease] #{})))
 
-  #_(is (= '#{{?pat "pat_y" ?disease "chf"}
+  (is (= '#{{?pat "pat_y" ?disease "chf"}
             {?pat "pat_y" ?disease "heart disease"}
             {?pat "pat_y" ?disease "disease"}
             {?pat "pat_x" ?disease "nsclc"}
@@ -109,7 +109,7 @@
             {?pat "pat_x" ?disease "disease"}}
          (literal/query '["has_disease" ?pat ?disease] #{})))
 
-  #_(is (= '#{{?pat "pat_x" ?disease "cancer"}}
+  (is (= '#{{?pat "pat_x" ?disease "cancer"}}
          (literal/query '["has_disease" ?pat ?disease]
                         '#{{?disease "cancer"}})))
 
@@ -122,42 +122,31 @@
          (literal/query '["subclass_of" ?subclass "disease"]
                         '#{})))
 
-  #_(is (= '#{{?subclass "disease"
+  (is (= '#{{?subclass "disease"
              :justification #{["subclass_of" "disease" "disease"]}}
             {?subclass "heart disease"
-             :justification #{["subclass_of" "heart disease" "disease"]
-                              ["subclass_of" "disease" "disease"]}}
+             :justification #{["subclass_of" "heart disease" "disease"]}}
             {?subclass "chf"
              :justification #{["subclass_of" "chf" "heart disease"]
-                              ["subclass_of" "heart disease" "disease"]
-                              ["subclass_of" "disease" "disease"]}}
+                              ["subclass_of" "heart disease" "disease"]}}
             {?subclass "cancer"
-             :justification #{["subclass_of" "cancer" "disease"]
-                              ["subclass_of" "disease" "disease"]}}
+             :justification #{["subclass_of" "cancer" "disease"]}}
             {?subclass "lung cancer"
              :justification #{["subclass_of" "lung cancer" "cancer"]
-                              ["subclass_of" "cancer" "disease"]
-                              ["subclass_of" "disease" "disease"]}}
+                              ["subclass_of" "cancer" "disease"]}}
             {?subclass "nsclc"
              :justification #{["subclass_of" "nsclc" "lung cancer"]
                               ["subclass_of" "lung cancer" "cancer"]
-                              ["subclass_of" "cancer" "disease"]
-                              ["subclass_of" "disease" "disease"]}}}
+                              ["subclass_of" "cancer" "disease"]}}}
          (literal/query '["subclass_of" ?subclass "disease"]
                         '#{} :justification? true)))
 
-  #_(is (= '#{{?subclass "disease" ?superclass "disease"}
-	    {?subclass "chf" ?superclass "heart disease"}
+  (is (= '#{{?subclass "chf" ?superclass "heart disease"}
 	    {?subclass "lung cancer" ?superclass "cancer"}
-	    {?subclass "cancer" ?superclass "cancer"}
-	    {?subclass "heart disease" ?superclass "heart disease"}
 	    {?subclass "nsclc" ?superclass "lung cancer"}
-	    {?subclass "nsclc" ?superclass "nsclc"}
 	    {?subclass "lung cancer" ?superclass "disease"}
 	    {?subclass "nsclc" ?superclass "disease"}
-	    {?subclass "nsclc" ?superclass "cancer"}
-	    {?subclass "chf" ?superclass "chf"}
-	    {?subclass "lung cancer" ?superclass "lung cancer"}
+            {?subclass "nsclc" ?superclass "cancer"}
 	    {?subclass "chf" ?superclass "disease"}}
          (literal/query '["subclass_of" ?subclass ?superclass]
                         '#{}))))
