@@ -25,61 +25,61 @@
           '["subclass_of" ?x ?y]
           '[]))))
 
-(deftest t-extension?
-  (is (binding/extension?
+(deftest t-expansion?
+  (is (binding/expansion?
        '{?x "dog" ?y "cat"}
        '{?x "dog" ?z "elephant"}))
-  (is (binding/extension?
+  (is (binding/expansion?
        '{?x "dog"}
        '{?x "dog" ?z "elephant"}))
-  (is (binding/extension?
+  (is (binding/expansion?
        '{?x "dog" ?y "cat"}
        '{?x "dog"}))
   (is (not
-       (binding/extension?
+       (binding/expansion?
         '{?x "dog" ?y "cat"}
         '{?x "dog" ?y "elephant"}))))
 
-(deftest t-extend-all-with-all
+(deftest t-expand-all-with-all
 
   (is (= '#{{?x "anparisi" ?y "cat"}
             {?x "anparisi" ?y "dog"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" ?y "dog"}]
           '[{?x "anparisi" ?y "cat"}])))
 
   (is (= '#{{?x "anparisi" ?y "cat" ?z "dog"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" ?z "dog"}]
           '[{?x "anparisi" ?y "cat"}])))
 
   (is (= '#{{?x "anparisi" ?y "dog" :justification [1 2]}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" :justification [2]}]
           '[{?x "anparisi" ?y "dog" :justification [1]}])))
 
   (is (= '#{{?x "anparisi" ?y "cat"}
             {?x "anparisi" ?y "dog"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" ?y "cat"}]
           '[{?x "anparisi" ?y "dog"}])))
 
   (is (= '#{{?x "anparisi" ?y "cat" ?z "dog"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" ?y "cat"}]
           '[{?x "anparisi" ?z "dog"}])))
 
   (is (= '#{{?x "anparisi" ?y "dog" :justification [2 1]}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi" ?y "dog" :justification [1]}]
           '[{?x "anparisi" :justification [2]}])))
 
   (is (= '#{{?x "anparisi"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           '[{?x "anparisi"}]
           [])))
 
   (is (= '#{{?x "anparisi"}}
-         (binding/extend-all-with-all
+         (binding/expand-all-with-all
           []
           '[{?x "anparisi"}]))))

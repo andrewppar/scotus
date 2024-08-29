@@ -4,51 +4,94 @@
    [scotus.logic.closure :as cl]
    [scotus.database.query :as dbq]))
 
-(defn ->formula [{:subclass_of/keys [subclass superclass]}]
+(defn ^:private ->formula [{:subclass_of/keys [subclass superclass]}]
   ["subclass_of" subclass superclass])
 
-(defn path->formulas [path]
+(defn ^:private path->formulas [path]
   (mapv ->formula path))
 
-(defn paths->justification [arg paths]
-  (set (map path->formulas paths))
-  #_(if (seq paths)
+(defn ^:private paths->justification [paths target]
+  (reduce
+   (fn [acc path]
+     (let [justification (path->formulas path)]
+       (reduce
+        (fn [acc* n]
+          (let [slice (take n justification)
+                end (last slice)
+                node (case target :subclass (second end) :superclass (nth end 2))]
+            (update acc* node (fnil conj #{}) (set slice))))
+        acc
+        (range 1 (inc (count justification))))))
+   {}
+   paths))
 
-    #{[["subclass_of" arg arg]]}))
+(defn wrap-justification [result justification? justification-fn]
+  (if justification?
+    (with-meta result {:justification (justification-fn)})
+    result))
 
+;; todo merge this with subclasses
 (defn superclasses
   [arg &
    {:keys [context justification?]
     :or {context "universal" justification? false}}]
-  (let [paths (cl/closure
+  (let [reflexive-case {:subclass_of/subclass arg :subclass_of/superclass arg}
+        paths (cl/closure
                [arg] "subclass_of" "subclass" "superclass" :context context)
+        ;; todo make this into one reduce
         result (->> paths
-                    (apply into #{{:subclass_of/subclass arg
-                                   :subclass_of/superclass arg}})
+                    (reduce into #{reflexive-case})
                     (mapcat
                      (fn [{:subclass_of/keys [subclass superclass]}]
                        [subclass superclass]))
                     set)]
-    (if justification?
-      (with-meta result {:justification (paths->justification arg paths)})
-      result)))
-
+    (wrap-justification
+     result justification?
+     (fn []
+       (update
+        (paths->justification paths :superclass)
+        arg (fnil conj #{}) #{["subclass_of" arg arg]})))))
 
 (defn subclasses
   [arg &
    {:keys [context justification?]
     :or {context "universal" justification? false}}]
-  (let [paths (cl/closure [arg] "subclass_of" "superclass" "subclass" :context context)
+  (let [reflexive-case {:subclass_of/subclass arg :subclass_of/superclass arg}
+        paths (cl/closure [arg] "subclass_of" "superclass" "subclass" :context context)
         result (->> paths
-                    (apply into #{{:subclass_of/subclass arg
-                                   :subclass_of/superclass arg}})
+                    (reduce into #{reflexive-case})
                     (mapcat
                      (fn [{:subclass_of/keys [subclass superclass]}]
                        [subclass superclass]))
                     set)]
-    (if justification?
-      (with-meta result {:justification (paths->justification arg paths)})
-      result)))
+    (wrap-justification
+     result justification?
+     (fn []
+       (update
+        (paths->justification paths :subclass)
+        arg (fnil conj #{}) ["subclass_of" arg arg])))))
+
+(defn subclass?
+  "The return for this (like queries) is either #{} or #{#{}} with the
+first representing false and the second true. Clojure doesn't allow adding
+meta to booleans, and that's how we store justifications."
+  [subclass superclass
+   & {:keys [context justification?]
+      :or {context "universal" justification? false}}]
+  (let [fail #{}
+        succeed #{fail}]
+    (if (= subclass superclass)
+      (wrap-justification
+       succeed justification?
+       (fn [] #{["subclass_of" subclass superclass]}))
+      (let [path (cl/path superclass subclass "subclass_of" "superclass" "subclass" :context context)]
+        (if (seq path)
+          (wrap-justification
+           succeed justification?
+           (fn [] (set (path->formulas path))))
+          (wrap-justification
+           fail justification?
+           (fn [] #{})))))))
 
 (defn any-disjoint-with-any?
   [one-classes two-classes context]
@@ -65,7 +108,6 @@
                   (dbq/lookup-rows "disjoint" [context] false)
                   first)]
       ["disjoint" class_one class_two])))
-
 
 (defn slice-justification [path end]
   (let [{:keys [found? result]} (reduce
@@ -90,8 +132,12 @@
         disj-class-one (nth result 1)
         disj-class-two (nth result 2)]
     (if justification?
-      (let [all-paths (set (concat (get (meta arg-one-classes) :justification)
-                                   (get (meta arg-two-classes) :justification)))
+      ;; todo this seems inefficient now that we are storing the justification
+      ;; as a map
+      (let [all-paths (reduce
+                       into
+                       (reduce into #{} (vals (get (meta arg-one-classes) :justification)))
+                       (vals (get (meta arg-two-classes) :justification)))
             justification-one (some (fn [path] (slice-justification path disj-class-one)) all-paths)
             justification-two (some (fn [path] (slice-justification path disj-class-two)) all-paths)]
         (with-meta result

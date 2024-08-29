@@ -22,39 +22,46 @@
     (testing "with justifications"
       (let [result (scl/superclasses "dog" :justification? true)]
         (is (= #{"dog" "mammal" "animal"} result))
-        (is (= #{[["subclass_of" "dog" "mammal"]
-                  ["subclass_of" "mammal" "animal"]]}
+        (is (= {"mammal" #{#{["subclass_of" "dog" "mammal"]}},
+	        "animal"
+	        #{#{["subclass_of" "dog" "mammal"]
+	            ["subclass_of" "mammal" "animal"]}},
+	        "dog" #{#{["subclass_of" "dog" "dog"]}}}
                (get (meta result) :justification)))))))
 
 
 (deftest ^:integration t-disjoint
-  (testing "simple disjointness"
-    (let [hierarchy [:and
-                     ["subclass_of" "dog" "mammal"]
-                     ["subclass_of" "lizard" "reptile"]
-                     ["disjoint" "mammal" "reptile"]]]
-      (assert/! hierarchy :asserter "anparisi")
-      (is (scl/disjoint? "dog" "lizard"))))
+  (let [hierarchy [:and
+                   ["subclass_of" "dog" "mammal"]
+                   ["subclass_of" "lizard" "reptile"]
+                   ["disjoint" "mammal" "reptile"]]]
+    (assert/! hierarchy :asserter "anparisi")
 
-  (testing "simple failed disjunction"
-    (assert/! ["subclass_of" "cat" "mammal"] :asserter "anparisi")
-    (is (not (scl/disjoint? "dog" "cat"))))
+    (testing "simple disjointness"
+      (is (scl/disjoint? "dog" "lizard")))
 
-  (testing "deeper disjoint"
-    (assert/! [:and
-               ["subclass_of" "chihuahua" "dog"]
-               ["subclass_of" "oaxaca chihuahua" "chihuahua"]
-               ["subclass_of" "iguana" "lizard"]])
-    (is (scl/disjoint? "iguana" "oaxaca chihuahua")))
+    (testing "simple failed disjunction"
+      (assert/! ["subclass_of" "cat" "mammal"] :asserter "anparisi")
+      (is (not (scl/disjoint? "dog" "cat"))))
 
-  (testing "symmetry"
-    (is (scl/disjoint? "chihuahua" "reptile"))
-    (is (scl/disjoint? "reptile" "chihuahua")))
+    (testing "deeper disjoint"
+      (assert/! [:and
+                 ["subclass_of" "chihuahua" "dog"]
+                 ["subclass_of" "oaxaca chihuahua" "chihuahua"]
+                 ["subclass_of" "iguana" "lizard"]])
+      (is (scl/disjoint? "iguana" "oaxaca chihuahua")))
 
-  (testing "justification"
-    (let [result (scl/disjoint? "chihuahua" "reptile" :justification? true)]
-      (is (= result ["disjoint" "mammal" "reptile"]))
-      (is (= [["subclass_of" "chihuahua" "dog"]
-              ["subclass_of" "dog" "mammal"]
-              ["disjoint" "mammal" "reptile"]]
-             (get (meta result) :justification))))))
+    (testing "symmetry"
+      (is (scl/disjoint? "chihuahua" "reptile"))
+      (is (scl/disjoint? "reptile" "chihuahua")))
+
+    (testing "justification"
+      (let [result (scl/disjoint? "chihuahua" "reptile" :justification? true)]
+        (is (= result ["disjoint" "mammal" "reptile"]))
+        (is (= [["subclass_of" "chihuahua" "dog"]
+                ["subclass_of" "dog" "mammal"]
+                ;; fixing the disjoint justification
+                ;; to use maps should fix this.
+                ["subclass_of" "reptile" "reptile"]
+                ["disjoint" "mammal" "reptile"]]
+               (get (meta result) :justification)))))))

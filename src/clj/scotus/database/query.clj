@@ -122,8 +122,6 @@
        contexts negated? row-specs
        :preds applicable-preds :include-meta? include-meta?))))
 
-
-
 (defn context [context]
   (let [preds (remove
                (fn [pred]

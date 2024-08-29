@@ -16,11 +16,27 @@ let
                             + make-body { commands = body ;}
                             + "\n}; \n" ;
 
-   db-start = shell-fn {
+  db-reset = shell-fn {
+    name = "db-reset" ;
+    body = [
+      ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "DROP DATABASE kb WITH(FORCE)"''
+      ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "CREATE DATABASE kb"''
+    ] ;
+  } ;
 
-       name = "db-start" ;
-      body = [db-start-cmd] ;
-    } ;
+  db-reset-test = shell-fn {
+    name = "db-reset-test" ;
+    body = [
+      ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "DROP DATABASE kb_test WITH(FORCE)"''
+      ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "CREATE DATABASE kb_test"''
+    ] ;
+  } ;
+
+  db-start = shell-fn {
+
+    name = "db-start" ;
+    body = [db-start-cmd] ;
+  } ;
 
   run = shell-fn {
     name = "run" ;

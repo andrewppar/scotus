@@ -50,7 +50,7 @@
    (fn [m] (= (get m search-key) search-value))
    binding-maps))
 
-(defn extension? [binding-one binding-two]
+(defn expansion? [binding-one binding-two]
   (let [binding-one-test (dissoc binding-one :justification)
         binding-two-test (dissoc binding-two :justification)]
     (every?
@@ -61,37 +61,37 @@
              (= two-value one-value))))
      binding-one-test)))
 
-(defn extend [binding-one binding-two]
-  (when (extension? binding-one binding-two)
+(defn expand [binding-one binding-two]
+  (when (expansion? binding-one binding-two)
     (combine binding-one binding-two)))
 
-(defn extend-all [binding-map binding-maps]
+(defn expand-all [binding-map binding-maps]
   (set
-   (or (seq (keep (partial extend binding-map) binding-maps))
+   (or (seq (keep (partial expand binding-map) binding-maps))
        (into #{binding-map} binding-maps))))
 
-(defn extend-all-with-all-internal
+(defn expand-all-with-all-internal
   [binding-maps-one binding-maps-two]
   (set
    (mapcat
     (fn [binding-map]
-      (extend-all binding-map binding-maps-one))
+      (expand-all binding-map binding-maps-one))
     binding-maps-two)))
 
-(defn extend-all-with-all
+(defn expand-all-with-all
   [binding-maps-one binding-maps-two]
   (set
   (if (not (seq binding-maps-two))
     binding-maps-one
-    (extend-all-with-all-internal binding-maps-one binding-maps-two))))
+    (expand-all-with-all-internal binding-maps-one binding-maps-two))))
 
-(defn extend-all-filtering
+(defn expand-all-filtering
   [original-bindings filtering-bindings]
   (if (seq original-bindings)
     (reduce
      (fn [result original]
        (->> filtering-bindings
-            (keep (partial extend original))
+            (keep (partial expand original))
             (into result)))
      #{}
      original-bindings)
