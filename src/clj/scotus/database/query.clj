@@ -96,8 +96,10 @@
        preds (state/tables)}}]
   (mapcat
    (fn [table]
-     (lookup-rows
-      table contexts negated? row-specs :include-meta? include-meta?))
+     (try ;;type casting issues - should be handleable with wff???
+       (lookup-rows
+        table contexts negated? row-specs :include-meta? include-meta?)
+    (catch Exception _ nil)))
    preds))
 
 (defn lookup-asserts-for-all-preds

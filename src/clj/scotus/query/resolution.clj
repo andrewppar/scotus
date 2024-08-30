@@ -30,7 +30,12 @@
 (defn r-> [literal bindings context justification?]
   (r-inequality literal bindings context > justification?))
 
-(defn r-subclass-of-traverse [bindings variable value direction context justification?]
+(defn wrap-justification [binding justification? justification-fn]
+  (if justification?
+    (update binding :justification (fnil into #{}) (justification-fn))
+    binding))
+
+(defn r-subclass-of-traverse [bindings query variable value direction context justification?]
   (let [classes (case direction
                   :subclass
                   (subclass/subclasses
@@ -41,17 +46,23 @@
                   (subclass/superclasses
                    value
                    :context context
-                   :justification? justification?))]
-    (reduce
-     (fn [acc class-value]
-       (cond->  {variable class-value}
-         justification? (assoc :justification
-                               (-> classes
-                                   meta
-                                   (get-in [:justification class-value])
-                                   first))
-         true (binding/expand-all acc)))
-     bindings
+                   :justification? justification?))
+        query-class (nth query (case direction :subclass 2 :superclass 1))]
+    ;; could be a pmap
+    (mapcat
+     (fn [class-value]
+       (let [justification-fn (fn []
+                                (-> classes
+                                    meta
+                                    (get-in [:justification class-value])
+                                    first))
+             new-binding (wrap-justification
+                          (if (f/variable? query-class)
+                            {variable class-value query-class value}
+                            {variable class-value})
+                          justification?
+                          justification-fn)]
+         (binding/expand-all new-binding bindings)))
      classes)))
 
 (defn r-formula-subclass-of [formula query bindings context justification?]
@@ -81,11 +92,11 @@
 
           (f/variable? subclass)
           (r-subclass-of-traverse
-           bindings subclass superclass :subclass context justification?)
+           bindings query subclass superclass :subclass context justification?)
 
           (f/variable? superclass)
           (r-subclass-of-traverse
-           bindings superclass subclass :superclass context justification?))))
+           bindings query superclass subclass :superclass context justification?))))
 
 (defn r-subclass-of [literal bindings context justification?]
   (let [formulas (binding/formula-apply-all literal bindings)]

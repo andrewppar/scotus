@@ -16,6 +16,19 @@
        sorted-keys)
       (mapcat (fn [group-key] (get groups group-key)) sorted-keys))))
 
+(defn ^:private <-with-nils-low [object-one object-two]
+  (cond (and object-one object-two)
+        (< object-one object-two)
+
+        object-one
+        false
+
+        object-two
+        true
+
+        :else
+        true))
+
 ;; should this also be informed by a graph on the variables?
 (defn sort-conjuncts
   [conjuncts]
@@ -33,7 +46,7 @@
     ;;; We should prioritize formulas with fewer variables
     [(comp count formula/variables) <]
     ;;; We should prioritize restricting search space with smaller tables
-    [(comp state/table-count formula/predicate) <]]
+    [(comp state/table-count formula/predicate) <-with-nils-low]]
    conjuncts))
 
 (defn dnf [formula]
