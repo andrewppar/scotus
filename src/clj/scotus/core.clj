@@ -61,6 +61,13 @@
 
 ;; Maybe asserter should be from a login value or a config value.
 
+
+(defn-api predicates
+  "List the predicates that scotus knows about."
+  []
+  []
+  (state/tables))
+
 (defn-api create-predicate!
   "Create a new predicate.
 
@@ -113,6 +120,7 @@
                          (get result 'scotus.core/?context))))]
       )
   (retract/! formula context))
+
 
 
 

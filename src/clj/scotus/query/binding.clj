@@ -1,5 +1,7 @@
 (ns scotus.query.binding
-  (:require [scotus.syntax.formula :as f]))
+  (:require
+   [clojure.string :as string]
+   [scotus.syntax.formula :as f]))
 
 (defn formula-apply [binding-map formula]
  ;; (when (f/formula? formula) ;; add the ability to optinally type check
@@ -96,3 +98,12 @@
      #{}
      original-bindings)
     filtering-bindings))
+
+(defn remove-unwanted-vars [binding]
+  (reduce-kv
+   (fn [acc var value]
+     (if (string/starts-with? (name var) "??")
+       acc
+       (assoc acc var value)))
+   {}
+   binding))

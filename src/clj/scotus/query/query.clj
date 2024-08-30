@@ -1,6 +1,7 @@
 (ns scotus.query.query
   (:require
    [scotus.query.canon :as canon]
+   [scotus.query.binding :as binding]
    [scotus.query.literal :as literal]
    [scotus.syntax.formula :as f]))
 
@@ -17,11 +18,8 @@
       [conjunction]
       (f/args conjunction)))))
 
-(defn query
-  [query &
-   {:keys [context justification?] :or
-    {context "universal"
-     justification? false}}]
+(defn query-internal
+  [query context justification?]
   (let [normalized-query (canon/dnf query)]
     (cond
       (f/literal? normalized-query)
@@ -37,3 +35,12 @@
            (map
             (partial query-conjunction context justification?))
            (reduce into #{})))))
+
+(defn query
+[query &
+   {:keys [context justification?] :or
+    {context "universal"
+     justification? false}}]
+  (->> (query-internal query context justification?)
+       (mapv binding/remove-unwanted-vars)
+       set))
