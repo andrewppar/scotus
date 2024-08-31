@@ -197,7 +197,10 @@
 (defn gather [formula gather-fn]
   (cond
     (atom? formula)
-    (filter gather-fn formula)
+    (if-let [to-keep (gather-fn formula)]
+      (into [to-keep]
+            (filter gather-fn formula))
+      (filter gather-fn formula))
 
     (negation? formula)
     (into (gather-fn formula) (gather (negatum formula) gather-fn))
@@ -205,7 +208,7 @@
     (or (conjunction? formula)
         (disjunction? formula))
     (into (gather-fn formula)
-          (map (fn [subformula]
+          (mapcat (fn [subformula]
                  (gather subformula gather-fn))
                (args formula)))
 
