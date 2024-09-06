@@ -147,6 +147,8 @@ pkgs.mkShell {
     postgresql
     less
     pgcli
+    # add this to a dev packages somehow
+    tmux
   ] ;
 
   DB_LOC = ".tmp/kb" ;

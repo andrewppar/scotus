@@ -107,7 +107,13 @@
 	       ?value "Cancer"
 	       ?predicate "label"}}
            (q/query '[?predicate "C15" ?value]
-                    :justification? true)))))
+                    :justification? true))))
+
+  (testing "filter missed label"
+    (is (= '#{}
+           (q/query '[:and
+                      ["has_disease" ?patient "C667"]
+                      ["label" ?patient "nolabel"]])))))
 
 (deftest t-query-contexts
   (retract/predicate! "has_condition")

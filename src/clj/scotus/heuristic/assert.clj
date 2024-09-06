@@ -26,7 +26,6 @@
                        (add-inferred-context predicate context negated? args))]
     (assert-map/merge-assert-maps asserted-map inferred-map)))
 
-
 (defmulti add-literals!
   "Determines whether other heuristics need to be added to the
   database as the result of an assertion"

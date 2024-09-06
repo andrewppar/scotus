@@ -9,10 +9,14 @@
 (defn query-conjunction [context justification? conjunction]
   (reduce
    (fn [result literal]
-     (literal/query
-      literal result :context context :justification? justification?))
-   {}
-
+     (let [new-results (literal/query
+                        literal result
+                        :context context
+                        :justification? justification?)]
+       (if (= new-results #{})
+         (reduced new-results)
+         new-results)))
+   #{}
    (canon/sort-conjuncts
     (if (f/literal? conjunction)
       [conjunction]

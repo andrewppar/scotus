@@ -153,7 +153,6 @@
 (defn consequent [formula]
   (nth formula 2))
 
-
 (defn same? [formula-one formula-two]
   (or (= formula-one formula-two)
       (cond (and (atom? formula-one)
@@ -220,9 +219,29 @@
     :else
     (gather-fn formula)))
 
+(defn substitute [formula expression replacement]
+  (let [sub-internal-fn (fn [subformula]
+                          (substitute subformula expression replacement))]
+    (if (= formula expression)
+      replacement
+      (cond (atom? formula)
+            (mapv sub-internal-fn formula)
+
+            (negation? formula)
+            (negate (substitute (negatum formula) replacement expression))
+
+            (conjunction? formula)
+            (into [:and] (mapv sub-internal-fn (args formula)))
+
+            (disjunction? formula)
+            (into [:or] (mapv sub-internal-fn (args formula)))
+
+            (implication? formula)
+            [:implies
+             (substitute (antecedent formula) expression replacement)
+             (substitute (consequent formula) expression replacement)]
+
+            :else formula))))
 
 (defn variables [formula]
   (gather formula variable?))
-
-
-(variables '["subclass_of" ?x ?y])
