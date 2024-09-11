@@ -1,4 +1,4 @@
-(ns scotus.config
+(ns cotus.config
   (:require [omniconf.core :as cfg]))
 
 (cfg/define
@@ -23,8 +23,12 @@
                    "The port to use when accessing the database."
                    :type :number
                    :required true
-                   :default 5432}}}})
-
+                :default 5432}}}
+   :nlp {:nested
+         {:store-location
+          {:description "The location of the NLP Store"
+           :type :string
+           :default "resources/scotus"}}}})
 
 (defn init!
   "Populate scotus's configuration"
