@@ -1,4 +1,4 @@
-(ns cotus.config
+(ns scotus.config
   (:require [omniconf.core :as cfg]))
 
 (cfg/define

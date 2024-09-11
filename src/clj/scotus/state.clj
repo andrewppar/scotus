@@ -100,7 +100,7 @@
    :nlp/store []
    :nlp/analyzer []
    :nlp/writer {:store (ig/ref :nlp/store) :analyzer (ig/ref :nlp/analyzer)}
-   :nlp/searcher {:store (ig/ref :nlp/store)}})
+   #_#_:nlp/searcher {:store (ig/ref :nlp/store)}})
 
 (defn init!
   "Initialize all the state for scotus."
