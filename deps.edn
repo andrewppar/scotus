@@ -5,12 +5,15 @@
   com.grammarly/omniconf {:mvn/version "0.4.3"}
   integrant/integrant {:mvn/version "0.8.0"}
   metosin/jsonista {:mvn/version "0.3.7"}
-  org.clojure/clojure {:mvn/version "1.11.1"}
+  org.apache.lucene/lucene-core {:mvn/version "9.11.1"}
+  org.clojure/clojure {:mvn/version "1.12.0"}
+  org.clojure/math.combinatorics {:mvn/version "0.1.6"}
   org.postgresql/postgresql {:mvn/version "42.1.4"}}
  :aliases
  {:dev/repl {:extra-deps
-             {nrepl/nrepl       {:mvn/version "0.9.0"}
-              cider/cider-nrepl {:mvn/version "0.30.0"}}
+             {nrepl/nrepl       {:mvn/version "RELEASE"}
+              cider/cider-nrepl {:mvn/version "RELEASE"}}
+             :extra-paths ["test/clj"]
              :main-opts ["-m"
                          "nrepl.cmdline"
                          "--middleware"

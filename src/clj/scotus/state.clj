@@ -4,12 +4,8 @@
    [next.jdbc      :as jdbc]
    [honey.sql      :as sql]
    [honey.sql.helpers :as h]
-   [scotus.config  :as cfg]))
-
-(defmacro dpf [form]
-  `(let [result# ,form]
-     (println (format "%s => %s" ',form result#))
-     result#))
+   [scotus.config  :as cfg]
+   [scotus.natural-language.database.index :as nlp.index]))
 
 (def state (atom nil))
 
@@ -86,9 +82,25 @@
       :port     dbport
       :dbname dbname})))
 
+(defmethod ig/init-key :nlp/store [_ _]
+  (nlp.index/store (cfg/get-item :nlp :store-location)))
+
+(defmethod ig/init-key :nlp/analyzer [_ _]
+  (nlp.index/analyzer))
+
+(defmethod ig/init-key :nlp/writer [_ {:keys [store analyzer]}]
+  (nlp.index/writer store analyzer))
+
+(defmethod ig/init-key :nlp/searcher [_ {:keys [store]}]
+  (nlp.index/searcher store))
+
 (def config
   {:database/connection []
-   :index/predicate {:db-connection (ig/ref :database/connection)}})
+   :index/predicate {:db-connection (ig/ref :database/connection)}
+   :nlp/store []
+   :nlp/analyzer []
+   :nlp/writer {:store (ig/ref :nlp/store) :analyzer (ig/ref :nlp/analyzer)}
+   #_#_:nlp/searcher {:store (ig/ref :nlp/store)}})
 
 (defn init!
   "Initialize all the state for scotus."
@@ -121,7 +133,6 @@
   [table]
   (get-in @state [:index/predicate table :count]))
 
-
 (defn refresh-index! []
   (let [new-state (ig/init config [:index/predicate])]
     (clojure.core/reset! state new-state)))
@@ -132,7 +143,6 @@
 (defn table-arg-types [table]
   (get-in (predicate-index) [table :column-types]))
 
-
 (defmacro with-refreshed-index [& body]
   {:style/indent 1}
   `(let [result# (do ~@body)]
@@ -142,4 +152,6 @@
 (comment
   (init!)
   (refresh-index!)
+
+
   )

@@ -7,13 +7,14 @@
 
 (def required-tables
   [["instance" "thing" "class"]
+   #_["equal" "first_thing" "second_thing"]
    ["arg_instance" "predicate" "argument" "class"]
    ["subcontext_of" "subcontext" "supercontext"]
    ["subclass_of" "subclass" "superclass"]
    ["description" "thing" "description"]
    ["disjoint" "class_one" "class_two"]
    ["transitive_arg"
-    "predicate" "arg" "transitive-predicate" "start-arg" "transitive-arg"]])
+    "predicate" "arg-name" "transitive-pred" "from-arg" "to-arg"]])
 
 (def required-positive-rows
   {"instance"
@@ -21,7 +22,7 @@
     ["class"                "class"]
     ["context"              "class"]
     ["predicate"            "class"]
-    ["arg_instance"         "predicate"]
+    ["arg_instance"         "type_predicate"]
     ["unassertible"         "class"]
     ["asserted"             "unassertible"]
     ["unknown"              "unassertible"]
@@ -44,10 +45,11 @@
     ["instance"
      "class" "subclass_of" "subclass" "superclass"]]
    "subclass_of"
-   [["transitive-predicate" "predicate"]
-    ["reflexive-predicate"  "predicate"]
-    ["symmetric-predicate"  "predicate"]
+   [["transitive_predicate" "predicate"]
+    ["reflexive_predicate"  "predicate"]
+    ["symmetric_predicate"  "predicate"]
     ["unassertible"         "predicate"]
+    ["type_predicate"       "predicate"]
     ;; One day support query restrictions on
     ;; predicates that must be fully bound at query time
     #_["closed-prediate"      "predicate"]]
@@ -75,33 +77,39 @@
         vals (try (reduce-kv
                    (fn [results pred specs]
                      (concat
-                      (dbq/lookup-rows pred :universal false specs)
+                      (dbq/lookup-rows pred ["universal"] false specs)
                       results))
                    []
                    required-positive-rows)
-               (catch Exception _
-                 false))]
+                  (catch Exception e
+                    (println e)
+                    false))]
     (boolean
      (when vals
        (= (count vals) row-count)))))
 
 (defn add-setup-asserts
-  [required-rows polarity]
+  [required-rows negative?]
   (reduce-kv
    (fn [acc predicate specs]
      (am/merge-assert-maps
       acc
-      (dba/add-rows predicate "universal" "anparisi" polarity specs)))
+      (dba/add-rows-by-table predicate "universal" "anparisi" negative? specs)))
    {:assert-count 0}
    required-rows))
 
 (defn setup!
   []
+  (dba/create-assertion-predicate-lookup)
+  (dba/create-justification-table)
   (mapv (fn [spec] (apply dba/create-table! spec)) required-tables)
+  (->> required-tables
+       (mapv (fn [spec] [(first spec) "predicate"]))
+       (dba/add-rows-by-table "instance" "universal" "anparisi" false))
   (am/merge-assert-maps
    {:assert-count 0}
    (add-setup-asserts required-positive-rows false)
-   #_(add-setup-asserts required-negative-rows true)))
+   (add-setup-asserts required-negative-rows true)))
 
 (defn tear-down!
   []
@@ -112,6 +120,13 @@
    (state/tables)))
 
 (comment
+  (setup?)
   (setup!)
   (tear-down!)
+
+  (add-rule
+   '[:implies ["subclass_of" ?x ?y] [:and ["instance" ?x "class"]
+                                     ["instance" ?y "class"]]])
+
+
   )

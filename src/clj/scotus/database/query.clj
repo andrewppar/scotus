@@ -2,9 +2,7 @@
   (:require
    [honey.sql              :as sql]
    [honey.sql.helpers      :as h]
-   [scotus.assert          :as assert]
    [scotus.database.utils  :as utils]
-   [scotus.formula.formula :as formula]
    [scotus.state           :as state]))
 
 (defn ^:private row-spec->conjunction
@@ -16,8 +14,11 @@
               row-spec columns)
       {:caused-by `(>= (count ~columns) (count ~row-spec))})))
   (let [base-conjunct (cond-> [:and]
-                        (not= contexts :universal) (conj [:in :context contexts])
-                        true (conj [:= :negative negated?]))]
+                        (not= contexts :universal)
+                        (conj [:in :context (vec contexts)])
+
+                        true
+                        (conj [:= :negative negated?]))]
     (->> row-spec
          (zipmap columns)
          (reduce-kv
@@ -38,22 +39,26 @@
 (defn empty-spec? [row-spec]
   (every? nil? row-spec))
 
-#dbg
 (defn lookup-rows-serial
   [{:keys [table contexts negated? include-meta?]
     :as options}
    row-specs]
   (let [table-columns (map utils/to-keyword (state/table-args table))
-        select-args   (if include-meta? [:*] table-columns)]
-    (utils/execute!
-     (cond-> (apply h/select select-args)
-       true (h/from (utils/to-keyword table))
-
-       (not (every? empty-spec? row-specs))
-       (h/where
-        (let [new-options (assoc options :columns table-columns)]
-          (row-specs->where-body new-options row-specs)))
-       true sql/format))))
+        select-args   (if include-meta? [:*] table-columns)
+        query-start (-> (apply h/select select-args)
+                        (h/from (utils/to-keyword table)))]
+    (if (not (every? empty-spec? row-specs))
+      (-> query-start
+          (h/where (row-specs->where-body
+                    (-> options
+                        (assoc :columns table-columns)
+                        (update :contexts (fnil conj #{}) "universal"))
+                    row-specs))
+          utils/execute!)
+      (utils/execute!
+       (-> query-start
+           (h/where
+            [:in :context (or contexts ["universal"])]))))))
 
 (defn lookup-rows
   [table contexts negated? row-specs & {:keys [include-meta?] :or
@@ -62,65 +67,69 @@
                  :contexts contexts
                  :negated? negated?
                  :include-meta? include-meta?}]
-  (->> row-specs
-       (partition-all 10000)
-       (pmap (partial lookup-rows-serial options))
-       (apply concat))))
+    (if (seq row-specs)
+      (->> row-specs
+           (partition-all 10000)
+           (pmap (partial lookup-rows-serial options))
+           (apply concat))
+      (lookup-rows-serial options row-specs))))
 
-(defn db-row->assert [predicate row]
-  (let [clean-row (reduce-kv
-                   (fn [acc k v]
-                     (assoc acc (keyword (name k)) v))
-                   {}
-                   row)
-        {:keys [context negative justification]} clean-row
-        args (vals
-              (dissoc clean-row :context :negative :justification :id))]
-    (assert/make predicate args context negative justification)))
+(defn lookup-assertion
+  [assertion-id]
+  (let [table (-> (h/select :predicate)
+                  (h/from :assertion_predicate_lookup)
+                  (h/where [:= [:cast assertion-id :uuid] :id])
+                  utils/execute!
+                  first
+                  (get :assertion_predicate_lookup/predicate)
+                  keyword)]
+    (-> (h/select :*)
+        (h/from table)
+        (h/where [:= :id [:cast assertion-id :uuid]])
+        utils/execute!
+        first)))
 
-(defn formulas->assertions [formulas contexts]
-  (reduce-kv
-   (fn [asserts predicate formulas]
-     (let [specs (mapv formula/args formulas)
-           rows  (lookup-rows
-                  predicate
-                  contexts
-                  ;; only positive assertions now
-                  false
-                  specs
-                  :include-meta? true)]
-       (concat asserts (map (partial db-row->assert predicate) rows))))
-   []
-   (group-by formula/predicate formulas)))
+(defn lookup-for-all-preds
+  [contexts negated? row-specs
+   & {:keys [preds include-meta?] :or
+      {include-meta? false
+       preds (state/tables)}}]
+  (mapcat
+   (fn [table]
+     (try ;;type casting issues - should be handleable with wff???
+       (lookup-rows
+        table contexts negated? row-specs :include-meta? include-meta?)
+    (catch Exception _ nil)))
+   preds))
 
-(defn lookup-assertion-by-id [table id]
-  (let [results (-> (h/select :*)
-                    (h/from (utils/to-keyword table))
-                    (h/where [:= :id id])
-                    sql/format
-                    utils/execute!)]
-    (when (seq results)
-      (if (> (count results) 1)
-        (throw
-         (ex-info (format
-                   "More than one assertion with id: %s"
-                   id)
-                  {:caused-by id}))
-        (let [raw-assert (first results)
-              keyfn    (partial keyword table)
-              context  (get raw-assert (keyfn "context"))
-              negative (get raw-assert (keyfn "negative"))
-              justification (get raw-assert (keyfn "justification"))
-              args (vals (dissoc raw-assert (keyfn "id")
-                                 (keyfn "negative")
-                                 (keyfn "justification")
-                                 (keyfn "context")))
-              assert (assert/make
-                      table args context negative justification)
-              generated-id (get assert :id)]
-          (if (not= id generated-id)
-            (throw
-             (ex-info (format "assertion with id: %s was saved with id %s"
-                              generated-id id)
-                      {:caused-by `(not= ~id ~generated-id)}))
-            assert))))))
+(defn lookup-asserts-for-all-preds
+  [contexts negated? row-specs
+   & {:keys [preds include-meta?] :or
+      {include-meta? false
+       preds (state/tables)}}]
+  (let [min-row-spec-size (apply min (map count row-specs))
+        applicable-preds  (->> preds
+                               (filter
+                                (fn [predicate]
+                                  (<= min-row-spec-size
+                                      (count (state/table-args predicate)))))
+                               (remove
+                                (fn [pred]
+                                  (contains? #{"assertion_predicate_lookup"
+                                               "assertion_justification"
+                                               "justification"}
+                                             pred))))]
+    (when (seq applicable-preds)
+      (lookup-for-all-preds
+       contexts negated? row-specs
+       :preds applicable-preds :include-meta? include-meta?))))
+
+(defn context [context]
+  (let [preds (remove
+               (fn [pred]
+                 (contains? #{"assertion_predicate_lookup"
+                              "assertion_justification"
+                              "justification"}
+                            pred))
+               (state/tables))]
+    (lookup-for-all-preds [context] false {} :include-meta? true :preds preds)))

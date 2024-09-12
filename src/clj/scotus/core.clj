@@ -1,26 +1,20 @@
 (ns scotus.core
   (:require
-   [scotus.config              :as cfg]
-   [scotus.database.assert-map :as am]
-   [scotus.formula.formula     :as f]
-   [scotus.query               :as query]
-   [scotus.setup               :as setup]
-   [scotus.state               :as state]
-   [scotus.transact            :as transact]))
+   [scotus.config :as cfg]
+   [scotus.setup :as setup]
+   [scotus.state :as state]
+   [scotus.query.query :as query]
+   [scotus.database.query :as lookup]
+   [scotus.semantic.assert :as assert]
+   [scotus.semantic.retract :as retract]))
 
 (defn init!
   "Initialize all configuration and state for scotus to run."
   []
   (cfg/init!)
   (state/init!)
-  (cond-> {:assert-count 0}
-    (not (setup/setup?)) (am/merge-assert-maps (setup/setup!))))
-
-(comment :someday
-(map (fn [[predicate args]]
-       (f/make-predicate predicate args))
-     (state/predicate-index))
-)
+  (when-not (setup/setup?)
+    (setup/setup!)))
 
 ;; knowledge management
 
@@ -54,6 +48,7 @@
          (do ~@required-fns)
          (do ~@body)))))
 
+
 (defn-api assert!
   "Assert `formula`.
 
@@ -62,18 +57,26 @@
                the context is \"universal\"."
   [formula & {:keys [asserter context] :or {context "universal"}}]
   [asserter]
-  (transact/assert! formula asserter context))
+  (assert/! formula :asserter asserter :context context))
 
 ;; Maybe asserter should be from a login value or a config value.
+
+
+(defn-api predicates
+  "List the predicates that scotus knows about."
+  []
+  []
+  (state/tables))
+
 (defn-api create-predicate!
   "Create a new predicate.
 
   - `args` is a required keyword argument that names the arguments for
            the newly created predicate.
   - `asserter` is a required keyword argument."
-  [predicate & {:keys [asserter args]}]
-  [asserter args]
-  (transact/create-predicate! predicate args asserter))
+  [predicate & {:keys [args asserter]}]
+  [args asserter]
+  (assert/predicate! predicate :args args :asserter asserter))
 
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.
@@ -81,13 +84,21 @@
   - `predicate` is the predicate to be removed."
   [predicate]
   []
-  (transact/delete-predicate! predicate))
+  (retract/predicate! predicate))
 
 (defn-api query
   "Run a query."
-  [formula & {:keys [context] :or {context "universal"}}]
+  [formula &
+   {:keys [context justification?]
+    :or {context "universal" justification? false}}]
   []
-  (query/query formula context))
+  (query/query formula :context context :justification? justification?))
+
+(defn-api context
+  "Get all the assertions in a context."
+  [context]
+  [context]
+  (lookup/context context))
 
 (defn-api retract!
   "Remove an assertion.
@@ -99,10 +110,26 @@
   ;; context
   [formula & {:keys [context] :or {context "universal"}}]
   []
-  (let [contexts (->> "universal"
+  ;; This is cool but it belongs in a layer between most operations
+  ;; not just here and not this high up.
+  #_(let [contexts (->> "universal"
                       (query/query
                        `["subcontext_of" ~context ?context])
                       (map
                        (fn [result]
                          (get result 'scotus.core/?context))))]
-  (transact/retract! formula contexts)))
+      )
+  (retract/! formula context))
+
+
+
+
+(comment
+  (init!)
+  (state/tables)
+
+
+  (context "ocsf")
+
+  (query '["instance" ?x "context"])
+  )

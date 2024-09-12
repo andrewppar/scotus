@@ -2,4 +2,6 @@
 .cpcache
 .lsp
 .nrepl-port
+.tmp
+logfile
 /scratch/
