@@ -12,6 +12,7 @@
     (state/init!)
     (f)
     (config/set-item [:db :name] old-kb)
+    (state/close-store)
     (state/init!)))
 
 (defn each-fixture [f]

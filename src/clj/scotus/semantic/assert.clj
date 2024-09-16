@@ -1,5 +1,6 @@
 (ns scotus.semantic.assert
   (:require
+   [clojure.set :as set]
    [scotus.heuristic.assert :as ha]
    [scotus.database.add :as add]
    [scotus.semantic.well-formed :as wf]
@@ -52,9 +53,13 @@
              negations-by-predicate)))))
 
 (defn predicate!
-  [predicate & {:keys [args asserter]}]
+  [predicate & {:keys [args asserter nlp-args]}]
   (when-not  (wf/predicate? predicate)
     (! ["instance" predicate "predicate"]
        :context "universal"
        :asserter asserter)
-    (apply add/create-table! predicate args)))
+    (when-let [bad-args (seq (set/difference (set nlp-args) (set args)))]
+      (throw
+       (ex-info "Cannot make a non-arg an NLP indexed arg"
+                {:caused-by bad-args})))
+    (add/create-table! predicate args nlp-args)))

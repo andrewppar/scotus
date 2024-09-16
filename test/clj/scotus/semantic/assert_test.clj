@@ -2,12 +2,13 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [honey.sql.helpers :as h]
+   [scotus.heuristic.query :as hq]
+   [scotus.database.test-utils :refer [each-fixture once-fixture]]
+   [scotus.database.utils :as utils]
+   [scotus.query.query :as q]
    ;; TODO: Make this a util outside of database
    [scotus.semantic.assert :as assert]
-   [scotus.query.query :as q]
-   [scotus.semantic.retract :as retract]
-   [scotus.database.test-utils :refer [each-fixture once-fixture]]
-   [scotus.database.utils :as utils]))
+   [scotus.semantic.retract :as retract]))
 
 (use-fixtures :each each-fixture)
 (use-fixtures :once once-fixture)
@@ -66,6 +67,18 @@
                  utils/execute!
                  count)))))
 
+(deftest ^:integration t-assert-natural-language
+  (testing "assert nlp data."
+    (assert/predicate! "test_label"
+                       :args ["item" "label"]
+                       :nlp-args ["label"]
+                       :asserter "anparisi")
+    (assert/! ["test_label" "odysseus" "bobo"]
+              :context "universal"
+              :asserter "anparisi")
+    (let [id (utils/->assertion-id
+              {:item "odysseus" :label "bobo"} "universal")]
+    (is (= (str id) (get (first (hq/lookup-assertion id)) :id))))))
 
 (defn ^:private column-data-type [table column]
   (->

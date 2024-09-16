@@ -36,7 +36,16 @@
       sql/format
       ((partial jdbc/execute! db-connection))
       first
-    (get :count)))
+      (get :count)))
+
+(defn set-table-nlp-args [table tables db-connection]
+  (mapv
+   (fn [{:nlp_args/keys [arg]}] arg)
+   (-> (h/select-distinct :arg)
+       (h/from :nlp-args)
+       (h/where [:= :predicate table])
+       sql/format
+       ((partial jdbc/execute! db-connection)))))
 
 (defmethod ig/init-key :index/predicate [_ {:keys [db-connection]}]
   (let [excluded-tables ["information_schema" "pg_catalog" "views"]
@@ -54,7 +63,8 @@
                         (h/order-by :table-name :ordinal-position)
                         sql/format
                         ((partial jdbc/execute! db-connection)))
-        tables      (distinct (map :columns/table_name raw-results))]
+        tables      (distinct (map :columns/table_name raw-results))
+        nlp-ready? (contains? (set tables) "nlp_args")]
     (reduce
      (fn [result table]
        (-> result
@@ -63,7 +73,11 @@
            (assoc-in [table :count]
                      (set-table-count table db-connection))
            (assoc-in [table :column-types]
-                     (set-table-column-type raw-results table))))
+                     (set-table-column-type raw-results table))
+           (cond-> nlp-ready?
+             (assoc-in
+              [table :nlp-args]
+              (set-table-nlp-args table tables db-connection)))))
      {}
      tables)))
 
@@ -88,19 +102,11 @@
 (defmethod ig/init-key :nlp/analyzer [_ _]
   (nlp.index/analyzer))
 
-(defmethod ig/init-key :nlp/writer [_ {:keys [store analyzer]}]
-  (nlp.index/writer store analyzer))
-
-(defmethod ig/init-key :nlp/searcher [_ {:keys [store]}]
-  (nlp.index/searcher store))
-
 (def config
   {:database/connection []
    :index/predicate {:db-connection (ig/ref :database/connection)}
    :nlp/store []
-   :nlp/analyzer []
-   :nlp/writer {:store (ig/ref :nlp/store) :analyzer (ig/ref :nlp/analyzer)}
-   #_#_:nlp/searcher {:store (ig/ref :nlp/store)}})
+   :nlp/analyzer []})
 
 (defn init!
   "Initialize all the state for scotus."
@@ -123,6 +129,11 @@
   [table]
   (into [] (get-in @state [:index/predicate table :args])))
 
+(defn table-nlp-args
+  "Get the nlp args associated with a table."
+  [table]
+  (into [] (get-in @state [:index/predicate table :nlp-args])))
+
 (defn tables
   "Get all the tables in the database."
   []
@@ -133,9 +144,21 @@
   [table]
   (get-in @state [:index/predicate table :count]))
 
+(defn nlp-store
+  "Get the nlp store."
+  []
+  (get @state :nlp/store))
+
+(defn nlp-analyzer
+  "Get the nlp analyzer."
+  []
+  (get @state :nlp/analyzer))
+
 (defn refresh-index! []
-  (let [new-state (ig/init config [:index/predicate])]
-    (clojure.core/reset! state new-state)))
+  (let [new-index (get
+                   (ig/init config [:index/predicate])
+                   :index/predicate)]
+    (clojure.core/swap! state assoc :index/predicate new-index)))
 
 (defn predicate-index  []
   (get @state :index/predicate))
@@ -148,6 +171,9 @@
   `(let [result# (do ~@body)]
      (refresh-index!)
      result#))
+
+(defn close-store []
+  (nlp.index/close (get @state :nlp/store)))
 
 (comment
   (init!)

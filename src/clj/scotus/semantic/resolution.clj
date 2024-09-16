@@ -3,6 +3,7 @@
    [scotus.database.query :as dbq]
    [scotus.query.assert-spec :as assert-spec]
    [scotus.semantic.literal :as literal]
+   [scotus.heuristic.query :as hq]
    [scotus.syntax.formula :as f]
    [scotus.logic.closure :as cl]))
 
@@ -24,7 +25,7 @@
         arg-map (literal/->map literal)]
     (literal/<-map (reduce
             (fn [result assert-arg]
-              (let [assert-spec (dbq/lookup-assertion (get arg-map assert-arg))
+              (let [assert-spec (hq/lookup-assertion (get arg-map assert-arg))
                     pred (namespace (first (keys assert-spec)))
                     formula (assert-spec/->formula assert-spec)
                     context (get assert-spec (keyword pred "context"))]

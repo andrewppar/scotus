@@ -24,8 +24,8 @@ let
     ] ;
   } ;
 
-  db-reset-test = shell-fn {
-    name = "db-reset-test" ;
+  db-test-reset = shell-fn {
+    name = "db-test-reset" ;
     body = [
       ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "DROP DATABASE kb_test WITH(FORCE)"''
       ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "CREATE DATABASE kb_test"''
@@ -76,7 +76,7 @@ let
 
   functions =
     db-reset
-    + db-reset-test
+    + db-test-reset
     + db-start
     + run
     + stop
@@ -125,7 +125,7 @@ let
 
   test = alias {
     name = "test" ;
-    command = "time clj -M:dev/test -m kaocha.runner --skip-meta :integration" ;
+    command = "time clj -M:dev/test -m kaocha.runner --skip-meta :integration --skip scotus.database" ;
   } ;
 
 

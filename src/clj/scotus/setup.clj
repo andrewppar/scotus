@@ -102,7 +102,10 @@
   []
   (dba/create-assertion-predicate-lookup)
   (dba/create-justification-table)
-  (mapv (fn [spec] (apply dba/create-table! spec)) required-tables)
+  (dba/create-nlp-args-table)
+  (run!
+   (fn [spec] (dba/create-table! (first spec) (rest spec) []))
+   required-tables)
   (->> required-tables
        (mapv (fn [spec] [(first spec) "predicate"]))
        (dba/add-rows-by-table "instance" "universal" "anparisi" false))
@@ -118,6 +121,7 @@
    (fn [predicate]
      (dbr/drop-table! predicate))
    (state/tables)))
+
 
 (comment
   (setup?)

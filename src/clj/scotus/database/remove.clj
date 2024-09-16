@@ -32,6 +32,9 @@
                        (apply h/where sql-clause (conj arg-clauses
                                                        [:= :negative negated?]
                                                        [:= :context context])))]
-    (-> (h/delete-from (utils/to-keyword table))
-        where-clause
+    (-> (h/with [:deleted_table_rows (-> (h/delete-from (utils/to-keyword table))
+                                         where-clause
+                                         (h/returning :id))])
+        (h/delete-from :assertion_predicate_lookup)
+        (h/where [:in :id (-> (h/select :id) (h/from :deleted_table_rows))])
         utils/execute!)))

@@ -13,7 +13,7 @@
 
 (deftest ^:integration t-drop-table
   (testing "Ensure that we can drop tables."
-    (dba/create-table! "test-table" "one" "two" "three")
+    (dba/create-table! "test-table" ["one" "two" "three"] [])
     (is (contains? (set (state/tables)) "test_table"))
     (dbr/drop-table! "test-table")
     (is (not (contains? (set (state/tables)) "test_table")))))

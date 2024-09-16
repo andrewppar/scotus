@@ -1,9 +1,9 @@
 (ns scotus.database.add
   (:require
-   [clojure.set :as set]
-   [clojure.string :as string]
    [honey.sql.helpers :as h]
    [next.jdbc :as jdbc]
+   [scotus.database.assertion :as assertion]
+   [scotus.database.justification :as justification]
    [scotus.database.utils :as utils]
    [scotus.json :as json]
    [scotus.state :as state]))
@@ -25,32 +25,26 @@
     (utils/ddl-success? (jdbc/execute! (state/db-connection) spec))))
 
 (defn create-assertion-predicate-lookup []
-  (-> (h/create-table :assertion_predicate_lookup)
-      (h/with-columns [[:id :uuid] [:predicate [:varchar 500]]])
-      utils/execute!)
-  (create-index "assertion_predicate_lookup" "id" {:unique true}))
+  (and
+   (assertion/create-predicate-lookup-table)
+   (create-index "assertion_predicate_lookup" "id" {:unique true})))
 
 (defn create-justification-table []
   (and
-   (every?
-    utils/ddl-success?
-    [
-     (-> (h/create-table :justification)
-         (h/with-columns [[:id :uuid] [:derived :bool] [:justification :jsonb]])
-         utils/execute!)
-
-     (-> (h/create-table :assertion-justification)
-         (h/with-columns [[:assertion-id :uuid] [:justification-id :uuid]])
-         utils/execute!)
-
-     (-> (h/alter-table :assertion-justification)
-         (h/add-index :primary-key :assertion-id :justification-id)
-         utils/execute!)])
+   (justification/create-table)
    (create-index "justification" "id" {:unique true})))
+
+(defn create-nlp-args-table []
+  (and
+   (-> (h/create-table :nlp-args)
+       (h/with-columns [[:predicate :text] [:arg :text]])
+       utils/execute!
+       utils/ddl-success?)
+   (create-index "nlp_args" "predicate" {})))
 
 (defn create-table!
   "Create a table with `table-name` and `columns`."
-  [table-name & columns]
+  [table-name columns nlp-columns]
   (state/with-refreshed-index
     (let [table-key     (utils/to-keyword table-name)
           required-cols [[:negative :boolean]
@@ -68,8 +62,15 @@
           ;; create indexes
           index-success? (every? (fn [column] (create-index table-name column {})) columns)
           ;; add a unique constraint for id
-          id-index-success? (create-index table-name "id" {:unique true})]
-      (and table-success? index-success? id-index-success?))))
+          id-index-success? (create-index table-name "id" {:unique true})
+          ;; add any nlp columns
+          clean-name (utils/clean-table-name table-name)
+          nlp-success? (when (seq nlp-columns)
+                         (-> (h/insert-into :nlp-args)
+                             (h/values (mapv (partial conj [clean-name]) nlp-columns))
+                             utils/execute!
+                             utils/something-inserted?))]
+      (and table-success? index-success? id-index-success? nlp-success?))))
 
 ;;; add rows
 
@@ -81,7 +82,7 @@
                            arg-columns
                            spec))]
     (assoc args
-           :id (utils/->uuid (sort (assoc args :context context)))
+           :id (utils/->assertion-id args context)
            :context context
            :negative negated?)))
 
@@ -106,42 +107,16 @@
   [table context justification negated? specs]
   (let [table-arg-columns (make-table-headers table)
         rows (map (partial make-table-row context negated? table-arg-columns) specs)
-        justification-id (if (string? justification)
-                           (utils/->uuid justification)
-                           (utils/->uuid (set justification)))
-        justification-row {:id justification-id :justification [:cast (json/encode justification) :jsonb]}
-        just-join-rows (map
-                        (fn [{:keys [id]}]
-                          {:assertion-id id
-                           :justification-id justification-id})
-                        rows)
-        assert-predicate-rows (map
-                               (fn [{:keys [id]}]
-                                 {:id id
-                                  :predicate table})
-                               rows)]
-    (-> (h/insert-into :assertion_predicate_lookup)
-        (h/values assert-predicate-rows)
-        (h/on-conflict :id)
-        h/do-nothing
-        utils/execute!)
-    (-> (h/insert-into :assertion-justification)
-        (h/values just-join-rows)
-        (h/on-conflict :assertion-id :justification-id)
-        h/do-nothing
-        utils/execute!)
-    (-> (h/insert-into :justification)
-        (h/values [justification-row])
-        (h/on-conflict :id)
-        h/do-nothing
-        utils/execute!)
+        assertion-ids (map (fn [{:keys [id]}] id) rows)]
+    (justification/add assertion-ids justification)
+    (assertion/add-lookup-rows assertion-ids table)
     {:assert-count
-     (get (first (-> (h/insert-into (utils/to-keyword table))
-                     (h/values rows)
-                     (h/on-conflict :id)
-                     h/do-nothing
-                     utils/execute!))
-          :next.jdbc/update-count)}))
+     (-> (h/insert-into (utils/to-keyword table))
+         (h/values rows)
+         (h/on-conflict :id)
+         h/do-nothing
+         utils/execute!
+         utils/insert-count)}))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Update Columns

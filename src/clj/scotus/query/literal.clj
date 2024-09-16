@@ -5,6 +5,7 @@
    [scotus.query.binding :as binding]
    [scotus.query.resolution :as resolution]
    [scotus.query.transitivity :as transitivity]
+   [scotus.heuristic.query :as hq]
    [scotus.semantic.resolution :as r]
    [scotus.syntax.formula :as f]))
 
@@ -29,12 +30,12 @@
         subformula (if negated? (f/negatum original-formula) original-formula)
         formulas  (binding/formula-apply-all subformula bindings)
         specs (map (comp args->spec f/args) formulas)
-
         contexts (r/->context context)
         pred (f/predicate subformula)
         base-results (if (f/variable? pred)
+                       ;; should this inlude nlp preds? probably not (for now)
                        (dbq/lookup-asserts-for-all-preds contexts negated? specs)
-                       (dbq/lookup-rows pred contexts negated? specs))]
+                       (hq/lookup-rows pred contexts negated? specs))]
     (->> base-results
          (map
           (fn [assert]

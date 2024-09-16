@@ -73,10 +73,12 @@
 
   - `args` is a required keyword argument that names the arguments for
            the newly created predicate.
-  - `asserter` is a required keyword argument."
-  [predicate & {:keys [args asserter]}]
+  - `asserter` is a required keyword argument.
+  - `nlp-args` any arguments to be indexed for natural language search."
+  [predicate & {:keys [args asserter nlp-args]}]
   [args asserter]
-  (assert/predicate! predicate :args args :asserter asserter))
+  (assert/predicate!
+   predicate :args args :asserter asserter :nlp-args nlp-args))
 
 (defn-api delete-predicate!
   "Delete `predicate` from sctous.
@@ -128,8 +130,17 @@
   (init!)
   (state/tables)
 
+  (create-predicate! "label" :args ["item" "label"] :nlp-args ["label"] :asserter "anparisi")
+  (create-predicate! "alt_label" :args ["item" "label"] :nlp-args ["label"] :asserter "anparisi")
+  (assert! [:and ["label" "odysseus" "bobo"]
+            ["label" "george" "gica"]
+            ["label" "anthony" "boneyard"]
+            ["label" "xenia" "beans"]]
+           :asserter "anparisi"
+           :context "universal")
+
+
 
   (context "ocsf")
 
-  (query '["instance" ?x "context"])
-  )
+  (query '["instance" ?x "context"]))

@@ -13,7 +13,7 @@
 (deftest ^:integration t-simple-lookup
   ;;more tests -- with justifications, without justifications, and negations
   (dbr/drop-table! "another_subclass")
-  (dba/create-table! "another_subclass" "thing" "class")
+  (dba/create-table! "another_subclass" ["thing" "class"] [])
   (assert/! [:and
              ["another_subclass" "dog" "mammal"]
              ["another_subclass" "cat" "mammal"]])
@@ -61,7 +61,7 @@
 
 (deftest ^:integration query
   (dbr/drop-table! "has_disease")
-  (dba/create-table! "has_disease" "patient" "disease")
+  (dba/create-table! "has_disease" ["patient" "disease"] [])
   (assert/! [:and
              ["has_disease" "pat_x" "nsclc"]
              ["has_disease" "pat_y" "chf"]]

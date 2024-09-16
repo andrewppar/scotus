@@ -9,6 +9,12 @@
 (defn ddl-success? [result]
   (= result [#:next.jdbc{:update-count 0}]))
 
+(defn something-inserted? [result]
+  (< 0 (get (first result) :next.jdbc/update-count)))
+
+(defn insert-count [result]
+  (get (first result) :next.jdbc/update-count))
+
 (defn run
   [stmt]
   (jdbc/execute! (state/db-connection) [stmt]))
@@ -34,3 +40,6 @@
 (defn ->uuid
   [item]
   (UUID/nameUUIDFromBytes (.getBytes (str item))))
+
+(defn ->assertion-id [args context]
+  (->uuid (sort (assoc args :context context))))

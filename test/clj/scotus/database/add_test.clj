@@ -12,9 +12,15 @@
 
 (deftest ^:integration t-create-table
   (testing "Ensure that we can create tables"
-    (dba/create-table! "test-table" "one" "two" "three")
+    (dba/create-table! "test-table" ["one" "two" "three"] [])
     (is (contains? (set (state/tables)) "test_table"))
-    (is (= (state/table-args "test_table") ["one" "two" "three"]))))
+    (is (= (state/table-args "test_table") ["one" "two" "three"])))
+
+  (testing "Ensure we can create with nlp args"
+    (dba/create-table! "test-label" ["item" "label"] ["label"])
+    (is (contains? (set (state/tables)) "test_label"))
+    (is (= (set (state/table-nlp-args "test_label"))
+           #{"label"}))))
 
 (deftest ^:integration t-add-rows-by-table
   (testing "add rows to table"

@@ -12,7 +12,7 @@
 
 (deftest ^:integration t-transitive-down
   (dbr/drop-table! "pet_type")
-  (dba/create-table! "pet_type" "person" "animal_type")
+  (dba/create-table! "pet_type" ["person" "animal_type"] [])
   (assert/! [:and
              ["transitive_arg" "pet_type" "animal_type" "subclass_of" "subclass" "superclass"]
              ["subclass_of" "golden_retriever" "dog"]
@@ -73,7 +73,7 @@
 
 (deftest ^:integration t-transitive-up
   (dbr/drop-table! "pet_type")
-  (dba/create-table! "pet_type" "person" "animal_type")
+  (dba/create-table! "pet_type" ["person" "animal_type"] [])
   (assert/! [:and
              ["transitive_arg" "pet_type" "animal_type" "subclass_of" "subclass" "superclass"]
              ["subclass_of" "golden_retriever" "dog"]

@@ -74,20 +74,21 @@
            (apply concat))
       (lookup-rows-serial options row-specs))))
 
-(defn lookup-assertion
-  [assertion-id]
-  (let [table (-> (h/select :predicate)
+(defn predicate-for-id [assertion-id]
+  (-> (h/select :predicate)
                   (h/from :assertion_predicate_lookup)
                   (h/where [:= [:cast assertion-id :uuid] :id])
                   utils/execute!
                   first
-                  (get :assertion_predicate_lookup/predicate)
-                  keyword)]
-    (-> (h/select :*)
-        (h/from table)
-        (h/where [:= :id [:cast assertion-id :uuid]])
-        utils/execute!
-        first)))
+                  (get :assertion_predicate_lookup/predicate)))
+
+(defn lookup-assertion
+  [assertion-id table]
+  (-> (h/select :*)
+      (h/from (keyword table))
+      (h/where [:= :id [:cast assertion-id :uuid]])
+      utils/execute!
+      first))
 
 (defn lookup-for-all-preds
   [contexts negated? row-specs

@@ -1,8 +1,10 @@
 (ns scotus.heuristic.assert
   (:require
-   [scotus.database.assert-map :as assert-map]
    [scotus.database.add :as dba]
-   [scotus.database.query :as dbq]))
+   [scotus.database.assert-map :as assert-map]
+   [scotus.database.query :as dbq]
+   [scotus.natural-language.database.add :as nlp.add]
+   [scotus.heuristic.utils :as utils]))
 
 (defn ^:private add-inferred-context
   [predicate context negated? args]
@@ -20,7 +22,12 @@
                        [[nil "context"]])
                       (mapv :instance/thing)
                       set)
-        asserted-map (dba/add-rows-by-table predicate context justification negated? args)
+        asserted-map (if (utils/nlp-predicate? predicate)
+                       (nlp.add/add-docs
+                        (mapv (partial into [predicate]) args)
+                        justification context)
+                       (dba/add-rows-by-table
+                        predicate context justification negated? args))
         inferred-map (if (contains? contexts context)
                        assert-map/empty-assert-map
                        (add-inferred-context predicate context negated? args))]
