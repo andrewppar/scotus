@@ -132,13 +132,15 @@
 
   (create-predicate! "label" :args ["item" "label"] :nlp-args ["label"] :asserter "anparisi")
   (create-predicate! "alt_label" :args ["item" "label"] :nlp-args ["label"] :asserter "anparisi")
-  (assert! [:and ["label" "odysseus" "bobo"]
-            ["label" "george" "gica"]
-            ["label" "anthony" "boneyard"]
-            ["label" "xenia" "beans"]]
+  (assert! [:and ["label" "odysseus" "bobo the dog"]
+            ["label" "george" "gica the boy"]
+            ["label" "anthony" "boneyard the boy"]
+            ["label" "xenia" "beans the wafra"]]
            :asserter "anparisi"
            :context "universal")
 
+
+  (query '["label" ?entity "boy"] :context "universal" :justification? true)
 
 
   (context "ocsf")

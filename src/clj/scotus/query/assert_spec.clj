@@ -3,26 +3,29 @@
    [scotus.state :as state]
    [scotus.syntax.formula :as f]))
 
+(defn predicate [spec]
+  (->> spec
+       keys
+       (some (fn [k] (when-let [ns (namespace k)] ns)))))
+
 (defn lookup [spec column]
-  (let [pred (-> spec keys first namespace)]
-    (get spec (keyword pred column))))
+  (get spec (keyword (predicate spec) column)))
 
 (defn put [spec column value]
-  (let [pred (-> spec keys first namespace)]
-    (assoc spec (keyword pred column) value)))
+  (assoc spec (keyword (predicate spec) column) value))
 
 (defn ->formula [assert-spec]
-  (let [predicate (namespace (first (keys assert-spec)))]
-    (->> (state/table-args predicate)
+  (let [pred (predicate assert-spec)]
+    (->> (state/table-args pred)
          (mapv
           (fn [arg]
-            (get assert-spec (keyword predicate arg))))
-         (into [predicate]))))
+            (get assert-spec (keyword pred arg))))
+         (into [pred]))))
 
 (defn ->binding [query spec & {:keys [justification?]}]
   (let [query-pred (f/literal-predicate query)
         pred (if (f/variable? query-pred)
-               (first (map namespace (keys spec)))
+               (predicate spec)
                query-pred)
         args (f/args (if (f/negation? query) (f/negatum query) query))
         pred-arg-names (state/table-args pred)

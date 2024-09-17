@@ -1,6 +1,8 @@
 (ns scotus.natural-language.database.index
   (:import (org.apache.lucene.store NIOFSDirectory)
            (org.apache.lucene.analysis.standard StandardAnalyzer)
+           (org.apache.lucene.analysis.ngram NGramTokenFilter)
+           (org.apache.lucene.analysis.custom CustomAnalyzer)
            (org.apache.lucene.index
             DirectoryReader IndexWriterConfig IndexWriter)
            (org.apache.lucene.search IndexSearcher)
@@ -14,7 +16,14 @@
     (.close store)))
 
 (defn analyzer []
-  (StandardAnalyzer.))
+  (.build
+   (doto (CustomAnalyzer/builder)
+     (.withTokenizer  "standard" (into-array String []))
+     (.addTokenFilter "lowercase" (into-array String []))
+     (.addTokenFilter "stop" (into-array String []))
+     (.addTokenFilter "nGram" (into-array String ["maxGramSize" "7"
+                                                  "minGramSize" "4"
+                                                  "preserveOriginal" "true"])))))
 
 (defn writer
   "The `with-writer` macro should always be used since it does the right cleanup."

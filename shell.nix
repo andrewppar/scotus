@@ -21,6 +21,9 @@ let
     body = [
       ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "DROP DATABASE kb WITH(FORCE)"''
       ''PGPASSWORD="postgres" psql -h "localhost" -U "postgres" -p $DB__PORT -c "CREATE DATABASE kb"''
+      ''echo "removing nlp store..."''
+      ''rm -rf resources/scotus''
+      ''echo "done"''
     ] ;
   } ;
 

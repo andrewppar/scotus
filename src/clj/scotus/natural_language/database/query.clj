@@ -5,23 +5,31 @@
    [scotus.state :as state])
   (:import
    (org.apache.lucene.index Term)
+   (org.apache.lucene.queryparser.classic QueryParser)
    (org.apache.lucene.search
-    IndexSearcher BooleanClause$Occur BooleanQuery$Builder ScoreDoc TopDocs TermQuery)))
+    FuzzyQuery
+    #_IndexSearcher
+    BooleanClause$Occur BooleanQuery$Builder #_ScoreDoc #_TopDocs
+    TermQuery)))
 
-(defn builder-add [builder term-query must?]
-  (.add builder term-query
+(defn builder-add [builder query must?]
+  (.add builder query
         (if must? BooleanClause$Occur/MUST BooleanClause$Occur/SHOULD)))
 
 (defn term-query [key value]
   (TermQuery. (Term. key (format "%s" value))))
 
-(defn add-disjunction-terms [builder term values]
-  (reduce
-   (fn [builder* value]
-     (doto builder*
-       (builder-add (term-query term value) false)))
-   builder
-   values))
+(defn parsed-query [term value analyzer]
+  (.parse (QueryParser. term analyzer) value))
+
+(defn disjunction-query [term values]
+  (.build
+   (reduce
+    (fn [builder value]
+        (doto builder
+          (builder-add (term-query term value) false)))
+    (BooleanQuery$Builder.)
+    values)))
 
 (defn ->named-key [predicate key]
   (if (contains? #{:score :id} key)
@@ -59,35 +67,45 @@
         searcher (index/searcher (state/nlp-store))]
     (score-search-results searcher (.search searcher query 10000))))
 
-(defn lookup [pred contexts specs]
-  (let [args (state/table-args pred)
-        spec-maps (map (partial zipmap args) specs)
-        grouped-args (assoc
-                      (reduce
-                       (fn [acc m]
-                         (reduce-kv
-                          (fn [acc* k v]
-                            (update acc* k (fnil conj #{}) v))
-                          acc m))
-                       spec-maps)
-                      :context contexts)
-        nlp-args (state/table-nlp-args pred)
+(defn lookup-spec [pred contexts spec]
+  (let [analyzer (state/nlp-analyzer)
+        context-subquery (.build
+                          (reduce
+                           (fn [builder context] (builder-add builder (term-query "context" context) false))
+                           (BooleanQuery$Builder.)
+                           contexts))
         query (.build
+               #_(doto (BooleanQuery$Builder.)
+                  (builder-add (term-query "predicate" pred) true)
+                  (builder-add context-subquery true))
                (reduce-kv
-                (fn [builder term values]
-                  (builder-add (disjoint-term-query term values) true))
+                (fn [builder term value]
+                  (if (nil? value)
+                    builder
+                    (builder-add builder (parsed-query term value analyzer) true)))
                 (doto (BooleanQuery$Builder.)
-                  (builder-add (term-query "predicate" predicate) true))
-                grouped-args))
+                  (builder-add (term-query "predicate" pred) true)
+                  (builder-add context-subquery true))
+                (zipmap (state/table-args pred) spec)))
+        searcher (index/searcher (state/nlp-store))]
+    (score-search-results searcher (.search searcher query 100000))))
 
+(defn ^:private merge-original [args spec results]
+  (map
+   (fn [result]
+     (reduce-kv
+      (fn [acc term original-value]
+        (if (nil? original-value)
+          acc
+          (assoc acc (keyword "original" term) original-value)))
+      result
+      (zipmap args spec)))
+   results))
 
-
-        ]
-
-
-    ))
-
-
-
- {}
- [{:one 1 :two 2} {:one 2 :two 3}])
+(defn lookup [pred contexts specs]
+  (let [args (state/table-args pred)]
+    (reduce into #{}
+            (map
+             (fn [spec]
+               (merge-original args spec (lookup-spec pred contexts spec)))
+             specs))))
