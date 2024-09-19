@@ -21,9 +21,7 @@
      (.withTokenizer  "standard" (into-array String []))
      (.addTokenFilter "lowercase" (into-array String []))
      (.addTokenFilter "stop" (into-array String []))
-     (.addTokenFilter "nGram" (into-array String ["maxGramSize" "7"
-                                                  "minGramSize" "4"
-                                                  "preserveOriginal" "true"])))))
+     (.addTokenFilter "englishMinimalStem" (into-array String [])))))
 
 (defn writer
   "The `with-writer` macro should always be used since it does the right cleanup."

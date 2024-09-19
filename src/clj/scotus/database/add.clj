@@ -65,7 +65,7 @@
           id-index-success? (create-index table-name "id" {:unique true})
           ;; add any nlp columns
           clean-name (utils/clean-table-name table-name)
-          nlp-success? (when (seq nlp-columns)
+          nlp-success? (or (not (seq nlp-columns))
                          (-> (h/insert-into :nlp-args)
                              (h/values (mapv (partial conj [clean-name]) nlp-columns))
                              utils/execute!

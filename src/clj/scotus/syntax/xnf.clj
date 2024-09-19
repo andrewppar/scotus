@@ -150,31 +150,46 @@
             :dnf :contradiction
             :cnf :tautology))))
 
+(defn xnf? [formula type]
+  (let [major? (case type :dnf f/disjunction? :cnf f/conjunction?)
+        minor? (case type :dnf f/conjunction? :cnf f/disjunction?)]
+    (or (f/literal? formula)
+        (and (major? formula)
+             (every?
+              (fn [subformula]
+                (or (f/literal? subformula)
+                    (and (minor? subformula)
+                         (every? f/literal? (f/args subformula)))))
+              (f/args formula))))))
+
 (defn dnf [formula]
   (xnf formula :dnf))
 
 (defn dnf? [formula]
-  (and (f/disjunction? formula)
-       (every? (fn [subformula]
-                 (and (f/conjunction? subformula)
-                      (every?
-                       (fn [subsubformula]
-                         (f/literal? subsubformula))
-                       (f/args subformula))))
-               (f/args formula))))
+  (xnf? formula :dnf))
 
 (defn cnf [formula]
   (xnf formula :cnf))
 
 (defn cnf? [formula]
-  (and (f/conjunction? formula)
-       (every? (fn [subformula]
-                 (and (f/disjunction? subformula)
-                      (every?
-                       (fn [subsubformula]
-                         (f/literal? subsubformula))
-                       (f/args subformula))))
-               (f/args formula))))
+  (xnf? formula :cnf))
+
+(defn literals [xnf]
+  (cond (f/literal? xnf)
+        [xnf]
+
+        (or (f/disjunction? xnf)
+            (f/conjunction? xnf))
+        (mapcat
+         (fn [subformula]
+           (if (f/literal? subformula)
+             [subformula]
+             (f/args subformula)))
+         (f/args xnf))
+
+        :else
+        (throw (ex-info "Cannot get xnf literals of non-xnf formula"
+                        {:caused-by xnf}))))
 
 
 (comment

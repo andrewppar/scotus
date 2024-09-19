@@ -59,4 +59,4 @@
       {:assert-count
       (->> docs
          (mapv (fn [doc] (.addDocument writer doc)))
-         (apply +))})))
+         count)})))

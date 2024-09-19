@@ -54,12 +54,13 @@
 
 (defn predicate!
   [predicate & {:keys [args asserter nlp-args]}]
-  (when-not  (wf/predicate? predicate)
-    (! ["instance" predicate "predicate"]
-       :context "universal"
-       :asserter asserter)
-    (when-let [bad-args (seq (set/difference (set nlp-args) (set args)))]
-      (throw
-       (ex-info "Cannot make a non-arg an NLP indexed arg"
-                {:caused-by bad-args})))
-    (add/create-table! predicate args nlp-args)))
+  (or  (wf/predicate? predicate)
+       (do
+         (! ["instance" predicate "predicate"]
+            :context "universal"
+            :asserter asserter)
+         (when-let [bad-args (seq (set/difference (set nlp-args) (set args)))]
+           (throw
+            (ex-info "Cannot make a non-arg an NLP indexed arg"
+                     {:caused-by bad-args})))
+         (add/create-table! predicate args nlp-args))))

@@ -36,8 +36,7 @@
       :else
       (->> normalized-query
            f/args
-           (map
-            (partial query-conjunction context justification?))
+           (map (partial query-conjunction context justification?))
            (reduce into #{})))))
 
 (defn query

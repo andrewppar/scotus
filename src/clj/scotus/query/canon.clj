@@ -1,6 +1,7 @@
 (ns scotus.query.canon
   (:require [scotus.syntax.formula :as f]
             [scotus.syntax.canon :as canon]
+            [scotus.semantic.well-formed :as wff]
             [scotus.state :as state]))
 
 (defn sort-formulas-by
@@ -45,9 +46,15 @@
 
     ;;; We should prioritize formulas with fewer variables
     [(comp count f/variables) <]
+
+    ;;; We should push nlp lookups own
+    [(comp boolean seq state/table-nlp-args f/predicate) nil]
+
     ;;; We should prioritize restricting search space with smaller tables
     [(comp state/table-count f/predicate) <-with-nils-low]]
    conjuncts))
+
+
 
 ;;; I'm no longer sure this is a good idea
 ;;; what about cases like [:and ["=" ?x "one] ["=" ?x "two"]]
@@ -82,4 +89,11 @@
    (mapv conjunction-substitute-identity (f/args dnf))))
 
 (defn dnf [formula]
-  (canon/enact formula :query))
+  (let [canon-formula (canon/enact formula :query)
+        errors (wff/query-type-errors canon-formula true)]
+    (if (seq errors)
+      (throw
+       (ex-info
+        (format "%s is not well-formed" canon-formula)
+        {:caused-by errors}))
+      canon-formula)))

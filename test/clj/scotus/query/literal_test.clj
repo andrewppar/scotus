@@ -142,11 +142,13 @@
                         '#{} :justification? true)))
 
   (is (= '#{{?subclass "chf" ?superclass "heart disease"}
+            {?subclass "heart disease" ?superclass "disease"}
 	    {?subclass "lung cancer" ?superclass "cancer"}
 	    {?subclass "nsclc" ?superclass "lung cancer"}
 	    {?subclass "lung cancer" ?superclass "disease"}
 	    {?subclass "nsclc" ?superclass "disease"}
             {?subclass "nsclc" ?superclass "cancer"}
+            {?subclass "cancer" ?superclass "disease"}
 	    {?subclass "chf" ?superclass "disease"}}
          (literal/query '["subclass_of" ?subclass ?superclass]
                         '#{}))))

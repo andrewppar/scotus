@@ -69,6 +69,7 @@
 
 (defn lookup-spec [pred contexts spec]
   (let [analyzer (state/nlp-analyzer)
+        nlp-args (set (state/table-nlp-args pred))
         context-subquery (.build
                           (reduce
                            (fn [builder context] (builder-add builder (term-query "context" context) false))
@@ -76,19 +77,30 @@
                            contexts))
         query (.build
                #_(doto (BooleanQuery$Builder.)
-                  (builder-add (term-query "predicate" pred) true)
-                  (builder-add context-subquery true))
+                   (builder-add (term-query "predicate" pred) true)
+                   (builder-add context-subquery true))
                (reduce-kv
                 (fn [builder term value]
                   (if (nil? value)
                     builder
-                    (builder-add builder (parsed-query term value analyzer) true)))
+                    (if (contains? nlp-args term)
+                      (builder-add builder (parsed-query term value analyzer) true)
+                      (builder-add builder (term-query term value) true))))
                 (doto (BooleanQuery$Builder.)
                   (builder-add (term-query "predicate" pred) true)
                   (builder-add context-subquery true))
                 (zipmap (state/table-args pred) spec)))
         searcher (index/searcher (state/nlp-store))]
-    (score-search-results searcher (.search searcher query 100000))))
+    (->>
+     (.search searcher query 100000)
+     (score-search-results searcher)
+     (sort-by :score >=)
+     #_(take 5))))
+
+
+
+
+
 
 (defn ^:private merge-original [args spec results]
   (map

@@ -6,15 +6,27 @@
             [scotus.state               :as state]))
 
 (def required-tables
-  [["instance" "thing" "class"]
-   #_["equal" "first_thing" "second_thing"]
-   ["arg_instance" "predicate" "argument" "class"]
-   ["subcontext_of" "subcontext" "supercontext"]
-   ["subclass_of" "subclass" "superclass"]
-   ["description" "thing" "description"]
-   ["disjoint" "class_one" "class_two"]
-   ["transitive_arg"
-    "predicate" "arg-name" "transitive-pred" "from-arg" "to-arg"]])
+  {"instance"
+   {:args ["thing" "class"]}
+
+   "arg_instance"
+   {:args ["predicate" "argument" "class"]}
+
+   "subcontext_of"
+   {:args ["subcontext" "supercontext"]}
+
+   "subclass_of"
+   {:args ["subclass" "superclass"]}
+
+   "disjoint"
+   {:args ["class_one" "class_two"]}
+
+   "description"
+   {:args ["thing" "description"]
+    :nlp-args ["desription"]}
+
+   "transitive_arg"
+   {:args ["predicate" "arg-name" "transitive-pred" "from-arg" "to-arg"]}})
 
 (def required-positive-rows
   {"instance"
@@ -104,10 +116,11 @@
   (dba/create-justification-table)
   (dba/create-nlp-args-table)
   (run!
-   (fn [spec] (dba/create-table! (first spec) (rest spec) []))
+   (fn [[table {:keys [args nlp-args]}]]
+     (dba/create-table! table args nlp-args))
    required-tables)
   (->> required-tables
-       (mapv (fn [spec] [(first spec) "predicate"]))
+       keys
        (dba/add-rows-by-table "instance" "universal" "anparisi" false))
   (am/merge-assert-maps
    {:assert-count 0}

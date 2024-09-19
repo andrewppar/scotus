@@ -27,17 +27,18 @@
   (let [start-binding (assert-spec/->binding
                        query db-result :justification? justification?)]
     (conj
-     (map-indexed
-      (fn [idx assert-spec]
-        (let [new-value (assert-spec/lookup assert-spec to-arg)
-              new-spec (assert-spec/put db-result arg-name new-value)
-              new-binding (assert-spec/->binding query new-spec)]
-          (if justification?
-            (let [justification-specs (conj (subvec closure 0 (inc idx)) db-result)
-                  justification (mapv assert-spec/->formula justification-specs)]
-              (assoc new-binding :justification justification))
-            new-binding)))
-      closure)
+     (->> closure
+          (map-indexed
+           (fn [idx assert-spec]
+             (when-let [new-value (assert-spec/lookup assert-spec to-arg)]
+               (let [new-spec    (assert-spec/put db-result arg-name new-value)
+                     new-binding (assert-spec/->binding query new-spec)]
+                 (if justification?
+                   (let [justification-specs (conj (subvec closure 0 (inc idx)) db-result)
+                         justification       (mapv assert-spec/->formula justification-specs)]
+                     (assoc new-binding :justification justification))
+                   new-binding)))))
+          (filter seq))
      (assert-spec/->binding query db-result :justification? justification?))))
 
 (defn transitive-up
@@ -64,8 +65,8 @@
        (let [arg (assert-spec/lookup spec arg_name)
              spec-closures (get arg->closures arg)]
          (into result (mapcat (partial bindings-for-upward-closure
-                                    spec query arg_name to_arg justification?)
-                           spec-closures))))
+                                       spec query arg_name to_arg justification?)
+                              (conj spec-closures [spec])))))
      #{}
      db-results)))
 
