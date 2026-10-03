@@ -5,7 +5,8 @@
    [honey.sql      :as sql]
    [honey.sql.helpers :as h]
    [scotus.config  :as cfg]
-   [scotus.natural-language.database.index :as nlp.index]))
+   ;;[scotus.natural-language.database.index :as nlp.index]
+   ))
 
 (def state (atom nil))
 
@@ -82,24 +83,24 @@
       :port     dbport
       :dbname dbname})))
 
-(defmethod ig/init-key :nlp/store [_ _]
-  (nlp.index/store (cfg/get-item :nlp :store-location)))
-
-(defmethod ig/init-key :nlp/analyzer [_ _]
-  (nlp.index/analyzer))
-
-(defmethod ig/init-key :nlp/writer [_ {:keys [store analyzer]}]
-  (nlp.index/writer store analyzer))
-
-(defmethod ig/init-key :nlp/searcher [_ {:keys [store]}]
-  (nlp.index/searcher store))
+;;(defmethod ig/init-key :nlp/store [_ _]
+;;  (nlp.index/store (cfg/get-item :nlp :store-location)))
+;;
+;;(defmethod ig/init-key :nlp/analyzer [_ _]
+;;  (nlp.index/analyzer))
+;;
+;;(defmethod ig/init-key :nlp/writer [_ {:keys [store analyzer]}]
+;;  (nlp.index/writer store analyzer))
+;;
+;;(defmethod ig/init-key :nlp/searcher [_ {:keys [store]}]
+;;  (nlp.index/searcher store))
 
 (def config
   {:database/connection []
    :index/predicate {:db-connection (ig/ref :database/connection)}
-   :nlp/store []
-   :nlp/analyzer []
-   :nlp/writer {:store (ig/ref :nlp/store) :analyzer (ig/ref :nlp/analyzer)}
+;;   :nlp/store []
+;;   :nlp/analyzer []
+;;   :nlp/writer {:store (ig/ref :nlp/store) :analyzer (ig/ref :nlp/analyzer)}
    #_#_:nlp/searcher {:store (ig/ref :nlp/store)}})
 
 (defn init!
@@ -148,6 +149,7 @@
   `(let [result# (do ~@body)]
      (refresh-index!)
      result#))
+
 
 (comment
   (init!)
