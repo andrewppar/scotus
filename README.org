@@ -1,0 +1,46 @@
+* Scotus
+
+A Knowledge Graph on top of Postgres
+
+** Description
+
+I would rest on this argument:
+
+1. Every theory of higher order logic (the good stuff) is isomorphic to a hypergraph.
+2. All representable knowledge (and that's all the knowledge there is (I think)) is expressible as a theory of higher order logic
+-----------------------------------------
+C. Knowledge graphs are useful (and cool)
+
+as a reason to be interested in hypergraph databases (fun exercise: you can run the same argument for graph databases by supplying one additional premise about representation).
+
+Postgres is everywhere and it's pretty good. This project provides a DSL for building a hypergraph (and therefore a graph if you want) database on top of postgres.
+
+I've built it because I think query languages are interesting and I wanted a really portable way of tracking knowledge in different places.
+
+** Usage
+
+There isn't too much built out for this yet. It's all in clojure. There is a =shell.nix= to help along. So if you have =nix= installed that would be the easiest. You can do:
+
+1. =nix-shell=
+2. =db-init=
+3. =db-create=
+4. =run=
+
+in the nix shell to get a clojure repl to attach to.
+
+Without that there is a little more work involved. The =shell.nix= specifies all the dependencies and the bash interpretation of those commands. (Sorry this is not low friction yet...)
+
+Once you have  a repl, connect to it with your favorite editor and start the database with =(do (init!) (state/tables)= in the core namespace.
+
+That will populate some of the scaffolding for the rest of the knowledge graph. You can ensure that everything worked by running a simple query:
+
+#+name: context
+#+begin_src clojure
+(query '["instance" ?x "context"])
+#+end_src
+
+That should return at least a binding of =?x= to ="universal"=
+
+** Tests
+
+There are some. They are exposed in the nix shell
